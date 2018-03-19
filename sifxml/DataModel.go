@@ -1,4 +1,9 @@
 package sifxml
+import (
+"bytes"
+"encoding/json"
+"log"
+)
 
 
     type ReportPackageType AbstractContentPackageType
