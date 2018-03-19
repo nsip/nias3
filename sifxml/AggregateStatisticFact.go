@@ -2,13 +2,13 @@ package sifxml
 
 
     type AggregateStatisticFact struct {
-        RefId RefIdType `xml:"RefId,attr"`
-      AggregateStatisticInfoRefId IdRefType `xml:"AggregateStatisticInfoRefId"`
-      Characteristics CharacteristicsType `xml:"Characteristics"`
-      Excluded string `xml:"Excluded"`
-      Value string `xml:"Value"`
-      SIF_Metadata SIF_MetadataType `xml:"SIF_Metadata"`
-      SIF_ExtendedElements SIF_ExtendedElementsType `xml:"SIF_ExtendedElements"`
+        RefId RefIdType `xml:"RefId,attr" json:"-RefId"`
+      AggregateStatisticInfoRefId IdRefType `xml:"AggregateStatisticInfoRefId,omitempty" json:"AggregateStatisticInfoRefId"`
+      Characteristics CharacteristicsType `xml:"Characteristics,omitempty" json:"Characteristics"`
+      Excluded string `xml:"Excluded,omitempty" json:"Excluded"`
+      Value string `xml:"Value,omitempty" json:"Value"`
+      SIF_Metadata SIF_MetadataType `xml:"SIF_Metadata,omitempty" json:"SIF_Metadata"`
+      SIF_ExtendedElements SIF_ExtendedElementsType `xml:"SIF_ExtendedElements,omitempty" json:"SIF_ExtendedElements"`
       
       }
     

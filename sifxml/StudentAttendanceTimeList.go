@@ -2,15 +2,15 @@ package sifxml
 
 
     type StudentAttendanceTimeList struct {
-        RefId RefIdType `xml:"RefId,attr"`
-      StudentPersonalRefId IdRefType `xml:"StudentPersonalRefId"`
-      SchoolInfoRefId IdRefType `xml:"SchoolInfoRefId"`
-      Date string `xml:"Date"`
-      SchoolYear SchoolYearType `xml:"SchoolYear"`
-      AttendanceTimes AttendanceTimesType `xml:"AttendanceTimes"`
-      PeriodAttendances PeriodAttendancesType `xml:"PeriodAttendances"`
-      SIF_Metadata SIF_MetadataType `xml:"SIF_Metadata"`
-      SIF_ExtendedElements SIF_ExtendedElementsType `xml:"SIF_ExtendedElements"`
+        RefId RefIdType `xml:"RefId,attr" json:"-RefId"`
+      StudentPersonalRefId IdRefType `xml:"StudentPersonalRefId,omitempty" json:"StudentPersonalRefId"`
+      SchoolInfoRefId IdRefType `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
+      Date string `xml:"Date,omitempty" json:"Date"`
+      SchoolYear SchoolYearType `xml:"SchoolYear,omitempty" json:"SchoolYear"`
+      AttendanceTimes AttendanceTimesType `xml:"AttendanceTimes,omitempty" json:"AttendanceTimes"`
+      PeriodAttendances PeriodAttendancesType `xml:"PeriodAttendances,omitempty" json:"PeriodAttendances"`
+      SIF_Metadata SIF_MetadataType `xml:"SIF_Metadata,omitempty" json:"SIF_Metadata"`
+      SIF_ExtendedElements SIF_ExtendedElementsType `xml:"SIF_ExtendedElements,omitempty" json:"SIF_ExtendedElements"`
       
       }
     

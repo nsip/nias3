@@ -2,51 +2,22 @@ package sifxml
 
 
     type LearningStandardItem struct {
-        RefId RefIdType `xml:"RefId,attr"`
-      Resources LResourcesType `xml:"Resources"`
-      StandardSettingBody LearningStandardItem_StandardSettingBody `xml:"StandardSettingBody"`
-      StandardHierarchyLevel LearningStandardItem_StandardHierarchyLevel `xml:"StandardHierarchyLevel"`
-      PredecessorItems LearningStandardsType `xml:"PredecessorItems"`
-      StatementCodes StatementCodesType `xml:"StatementCodes"`
-      Statements StatementsType `xml:"Statements"`
-      YearLevels YearLevelsType `xml:"YearLevels"`
-      ACStrandSubjectArea ACStrandSubjectAreaType `xml:"ACStrandSubjectArea"`
-      StandardIdentifier LearningStandardItem_StandardIdentifier `xml:"StandardIdentifier"`
-      LearningStandardDocumentRefId IdRefType `xml:"LearningStandardDocumentRefId"`
-      RelatedLearningStandardItems LearningStandardItem_RelatedLearningStandardItems `xml:"RelatedLearningStandardItems"`
-      Level4 string `xml:"Level4"`
-      Level5 string `xml:"Level5"`
-      SIF_Metadata SIF_MetadataType `xml:"SIF_Metadata"`
-      SIF_ExtendedElements SIF_ExtendedElementsType `xml:"SIF_ExtendedElements"`
+        RefId RefIdType `xml:"RefId,attr" json:"-RefId"`
+      Resources LResourcesType `xml:"Resources,omitempty" json:"Resources"`
+      StandardSettingBody StandardsSettingBodyType `xml:"StandardSettingBody,omitempty" json:"StandardSettingBody"`
+      StandardHierarchyLevel StandardHierarchyLevelType `xml:"StandardHierarchyLevel,omitempty" json:"StandardHierarchyLevel"`
+      PredecessorItems LearningStandardsType `xml:"PredecessorItems,omitempty" json:"PredecessorItems"`
+      StatementCodes StatementCodesType `xml:"StatementCodes,omitempty" json:"StatementCodes"`
+      Statements StatementsType `xml:"Statements,omitempty" json:"Statements"`
+      YearLevels YearLevelsType `xml:"YearLevels,omitempty" json:"YearLevels"`
+      ACStrandSubjectArea ACStrandSubjectAreaType `xml:"ACStrandSubjectArea,omitempty" json:"ACStrandSubjectArea"`
+      StandardIdentifier StandardIdentifierType `xml:"StandardIdentifier,omitempty" json:"StandardIdentifier"`
+      LearningStandardDocumentRefId IdRefType `xml:"LearningStandardDocumentRefId,omitempty" json:"LearningStandardDocumentRefId"`
+      RelatedLearningStandardItems RelatedLearningStandardItemRefIdListType `xml:"RelatedLearningStandardItems,omitempty" json:"RelatedLearningStandardItems"`
+      Level4 string `xml:"Level4,omitempty" json:"Level4"`
+      Level5 string `xml:"Level5,omitempty" json:"Level5"`
+      SIF_Metadata SIF_MetadataType `xml:"SIF_Metadata,omitempty" json:"SIF_Metadata"`
+      SIF_ExtendedElements SIF_ExtendedElementsType `xml:"SIF_ExtendedElements,omitempty" json:"SIF_ExtendedElements"`
       
       }
-    type LearningStandardItem_StandardSettingBody struct {
-       Country CountryType `xml:"Country"`
-       StateProvince StateProvinceType `xml:"StateProvince"`
-       SettingBodyName string `xml:"SettingBodyName"`
-}
-type LearningStandardItem_StandardHierarchyLevel struct {
-       Number string `xml:"Number"`
-       Description string `xml:"Description"`
-}
-type LearningStandardItem_StandardIdentifier struct {
-       YearCreated string `xml:"YearCreated"`
-       ACStrandSubjectArea ACStrandSubjectAreaType `xml:"ACStrandSubjectArea"`
-       StandardNumber string `xml:"StandardNumber"`
-       YearLevels YearLevelsType `xml:"YearLevels"`
-       Benchmark string `xml:"Benchmark"`
-       YearLevel YearLevelType `xml:"YearLevel"`
-       IndicatorNumber string `xml:"IndicatorNumber"`
-      AlternateIdentificationCodes LearningStandardItem_AlternateIdentificationCodes `xml:"AlternateIdentificationCodes"`
-       Organization string `xml:"Organization"`
-}
-type LearningStandardItem_RelatedLearningStandardItems struct {
-      LearningStandardItemRefId []LearningStandardItem_LearningStandardItemRefId `xml:"LearningStandardItemRefId"`
-}
-type LearningStandardItem_AlternateIdentificationCodes struct {
-       AlternateIdentificationCode []string `xml:"AlternateIdentificationCode"`
-}
-type LearningStandardItem_LearningStandardItemRefId struct {
-      RelationshipType string `xml:"RelationshipType,attr"`
-      Value IdRefType `xml:",chardata"`
-}
+    

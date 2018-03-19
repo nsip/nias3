@@ -2,17 +2,17 @@ package sifxml
 
 
     type StudentActivityParticipation struct {
-        RefId RefIdType `xml:"RefId,attr"`
-      StudentPersonalRefId IdRefType `xml:"StudentPersonalRefId"`
-      StudentActivityInfoRefId IdRefType `xml:"StudentActivityInfoRefId"`
-      SchoolYear SchoolYearType `xml:"SchoolYear"`
-      ParticipationComment string `xml:"ParticipationComment"`
-      StartDate string `xml:"StartDate"`
-      EndDate string `xml:"EndDate"`
-      Role string `xml:"Role"`
-      RecognitionList RecognitionListType `xml:"RecognitionList"`
-      SIF_Metadata SIF_MetadataType `xml:"SIF_Metadata"`
-      SIF_ExtendedElements SIF_ExtendedElementsType `xml:"SIF_ExtendedElements"`
+        RefId RefIdType `xml:"RefId,attr" json:"-RefId"`
+      StudentPersonalRefId IdRefType `xml:"StudentPersonalRefId,omitempty" json:"StudentPersonalRefId"`
+      StudentActivityInfoRefId IdRefType `xml:"StudentActivityInfoRefId,omitempty" json:"StudentActivityInfoRefId"`
+      SchoolYear SchoolYearType `xml:"SchoolYear,omitempty" json:"SchoolYear"`
+      ParticipationComment string `xml:"ParticipationComment,omitempty" json:"ParticipationComment"`
+      StartDate string `xml:"StartDate,omitempty" json:"StartDate"`
+      EndDate string `xml:"EndDate,omitempty" json:"EndDate"`
+      Role string `xml:"Role,omitempty" json:"Role"`
+      RecognitionList RecognitionListType `xml:"RecognitionList,omitempty" json:"RecognitionList"`
+      SIF_Metadata SIF_MetadataType `xml:"SIF_Metadata,omitempty" json:"SIF_Metadata"`
+      SIF_ExtendedElements SIF_ExtendedElementsType `xml:"SIF_ExtendedElements,omitempty" json:"SIF_ExtendedElements"`
       
       }
     

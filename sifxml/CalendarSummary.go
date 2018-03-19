@@ -2,22 +2,22 @@ package sifxml
 
 
     type CalendarSummary struct {
-        RefId RefIdType `xml:"RefId,attr"`
-      SchoolInfoRefId IdRefType `xml:"SchoolInfoRefId"`
-      SchoolYear SchoolYearType `xml:"SchoolYear"`
-      LocalId LocalIdType `xml:"LocalId"`
-      Description string `xml:"Description"`
-      DaysInSession string `xml:"DaysInSession"`
-      StartDate string `xml:"StartDate"`
-      EndDate string `xml:"EndDate"`
-      FirstInstructionDate string `xml:"FirstInstructionDate"`
-      LastInstructionDate string `xml:"LastInstructionDate"`
-      GraduationDate GraduationDateType `xml:"GraduationDate"`
-      InstructionalMinutes string `xml:"InstructionalMinutes"`
-      MinutesPerDay string `xml:"MinutesPerDay"`
-      YearLevels YearLevelsType `xml:"YearLevels"`
-      SIF_Metadata SIF_MetadataType `xml:"SIF_Metadata"`
-      SIF_ExtendedElements SIF_ExtendedElementsType `xml:"SIF_ExtendedElements"`
+        RefId RefIdType `xml:"RefId,attr" json:"-RefId"`
+      SchoolInfoRefId IdRefType `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
+      SchoolYear SchoolYearType `xml:"SchoolYear,omitempty" json:"SchoolYear"`
+      LocalId LocalIdType `xml:"LocalId,omitempty" json:"LocalId"`
+      Description string `xml:"Description,omitempty" json:"Description"`
+      DaysInSession string `xml:"DaysInSession,omitempty" json:"DaysInSession"`
+      StartDate string `xml:"StartDate,omitempty" json:"StartDate"`
+      EndDate string `xml:"EndDate,omitempty" json:"EndDate"`
+      FirstInstructionDate string `xml:"FirstInstructionDate,omitempty" json:"FirstInstructionDate"`
+      LastInstructionDate string `xml:"LastInstructionDate,omitempty" json:"LastInstructionDate"`
+      GraduationDate GraduationDateType `xml:"GraduationDate,omitempty" json:"GraduationDate"`
+      InstructionalMinutes string `xml:"InstructionalMinutes,omitempty" json:"InstructionalMinutes"`
+      MinutesPerDay string `xml:"MinutesPerDay,omitempty" json:"MinutesPerDay"`
+      YearLevels YearLevelsType `xml:"YearLevels,omitempty" json:"YearLevels"`
+      SIF_Metadata SIF_MetadataType `xml:"SIF_Metadata,omitempty" json:"SIF_Metadata"`
+      SIF_ExtendedElements SIF_ExtendedElementsType `xml:"SIF_ExtendedElements,omitempty" json:"SIF_ExtendedElements"`
       
       }
     

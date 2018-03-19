@@ -2,38 +2,38 @@ package sifxml
 
 
     type StudentParticipation struct {
-        RefId RefIdType `xml:"RefId,attr"`
-      StudentPersonalRefId IdRefType `xml:"StudentPersonalRefId"`
-      StudentParticipationAsOfDate string `xml:"StudentParticipationAsOfDate"`
-      ProgramType string `xml:"ProgramType"`
-      ProgramFundingSources ProgramFundingSourcesType `xml:"ProgramFundingSources"`
-      ManagingSchool StudentParticipation_ManagingSchool `xml:"ManagingSchool"`
-      ReferralDate string `xml:"ReferralDate"`
-      ReferralSource ReferralSourceType `xml:"ReferralSource"`
-      ProgramStatus ProgramStatusType `xml:"ProgramStatus"`
-      GiftedEligibilityCriteria string `xml:"GiftedEligibilityCriteria"`
-      EvaluationParentalConsentDate string `xml:"EvaluationParentalConsentDate"`
-      EvaluationDate string `xml:"EvaluationDate"`
-      EvaluationExtensionDate string `xml:"EvaluationExtensionDate"`
-      ExtensionComments string `xml:"ExtensionComments"`
-      ReevaluationDate string `xml:"ReevaluationDate"`
-      ProgramEligibilityDate string `xml:"ProgramEligibilityDate"`
-      ProgramPlanDate string `xml:"ProgramPlanDate"`
-      ProgramPlanEffectiveDate string `xml:"ProgramPlanEffectiveDate"`
-      NOREPDate string `xml:"NOREPDate"`
-      PlacementParentalConsentDate string `xml:"PlacementParentalConsentDate"`
-      ProgramPlacementDate string `xml:"ProgramPlacementDate"`
-      ExtendedSchoolYear string `xml:"ExtendedSchoolYear"`
-      ExtendedDay string `xml:"ExtendedDay"`
-      ProgramAvailability ProgramAvailabilityType `xml:"ProgramAvailability"`
-      EntryPerson string `xml:"EntryPerson"`
-      StudentSpecialEducationFTE string `xml:"StudentSpecialEducationFTE"`
-      ParticipationContact string `xml:"ParticipationContact"`
-      SIF_Metadata SIF_MetadataType `xml:"SIF_Metadata"`
-      SIF_ExtendedElements SIF_ExtendedElementsType `xml:"SIF_ExtendedElements"`
+        RefId RefIdType `xml:"RefId,attr" json:"-RefId"`
+      StudentPersonalRefId IdRefType `xml:"StudentPersonalRefId,omitempty" json:"StudentPersonalRefId"`
+      StudentParticipationAsOfDate string `xml:"StudentParticipationAsOfDate,omitempty" json:"StudentParticipationAsOfDate"`
+      ProgramType string `xml:"ProgramType,omitempty" json:"ProgramType"`
+      ProgramFundingSources ProgramFundingSourcesType `xml:"ProgramFundingSources,omitempty" json:"ProgramFundingSources"`
+      ManagingSchool StudentParticipation_ManagingSchool `xml:"ManagingSchool,omitempty" json:"ManagingSchool"`
+      ReferralDate string `xml:"ReferralDate,omitempty" json:"ReferralDate"`
+      ReferralSource ReferralSourceType `xml:"ReferralSource,omitempty" json:"ReferralSource"`
+      ProgramStatus ProgramStatusType `xml:"ProgramStatus,omitempty" json:"ProgramStatus"`
+      GiftedEligibilityCriteria string `xml:"GiftedEligibilityCriteria,omitempty" json:"GiftedEligibilityCriteria"`
+      EvaluationParentalConsentDate string `xml:"EvaluationParentalConsentDate,omitempty" json:"EvaluationParentalConsentDate"`
+      EvaluationDate string `xml:"EvaluationDate,omitempty" json:"EvaluationDate"`
+      EvaluationExtensionDate string `xml:"EvaluationExtensionDate,omitempty" json:"EvaluationExtensionDate"`
+      ExtensionComments string `xml:"ExtensionComments,omitempty" json:"ExtensionComments"`
+      ReevaluationDate string `xml:"ReevaluationDate,omitempty" json:"ReevaluationDate"`
+      ProgramEligibilityDate string `xml:"ProgramEligibilityDate,omitempty" json:"ProgramEligibilityDate"`
+      ProgramPlanDate string `xml:"ProgramPlanDate,omitempty" json:"ProgramPlanDate"`
+      ProgramPlanEffectiveDate string `xml:"ProgramPlanEffectiveDate,omitempty" json:"ProgramPlanEffectiveDate"`
+      NOREPDate string `xml:"NOREPDate,omitempty" json:"NOREPDate"`
+      PlacementParentalConsentDate string `xml:"PlacementParentalConsentDate,omitempty" json:"PlacementParentalConsentDate"`
+      ProgramPlacementDate string `xml:"ProgramPlacementDate,omitempty" json:"ProgramPlacementDate"`
+      ExtendedSchoolYear string `xml:"ExtendedSchoolYear,omitempty" json:"ExtendedSchoolYear"`
+      ExtendedDay string `xml:"ExtendedDay,omitempty" json:"ExtendedDay"`
+      ProgramAvailability ProgramAvailabilityType `xml:"ProgramAvailability,omitempty" json:"ProgramAvailability"`
+      EntryPerson string `xml:"EntryPerson,omitempty" json:"EntryPerson"`
+      StudentSpecialEducationFTE string `xml:"StudentSpecialEducationFTE,omitempty" json:"StudentSpecialEducationFTE"`
+      ParticipationContact string `xml:"ParticipationContact,omitempty" json:"ParticipationContact"`
+      SIF_Metadata SIF_MetadataType `xml:"SIF_Metadata,omitempty" json:"SIF_Metadata"`
+      SIF_ExtendedElements SIF_ExtendedElementsType `xml:"SIF_ExtendedElements,omitempty" json:"SIF_ExtendedElements"`
       
       }
     type StudentParticipation_ManagingSchool struct {
-      SIF_RefObject string `xml:"SIF_RefObject,attr"`
-      Value IdRefType `xml:",chardata"`
+      SIF_RefObject string `xml:"SIF_RefObject,attr" json:"-SIF_RefObject"`
+      Value IdRefType `xml:",chardata" json:"Value"`
 }

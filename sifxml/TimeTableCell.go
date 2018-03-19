@@ -2,26 +2,26 @@ package sifxml
 
 
     type TimeTableCell struct {
-        RefId RefIdType `xml:"RefId,attr"`
-      TimeTableRefId IdRefType `xml:"TimeTableRefId"`
-      TimeTableSubjectRefId IdRefType `xml:"TimeTableSubjectRefId"`
-      TeachingGroupRefId IdRefType `xml:"TeachingGroupRefId"`
-      RoomInfoRefId IdRefType `xml:"RoomInfoRefId"`
-      StaffPersonalRefId IdRefType `xml:"StaffPersonalRefId"`
-      TimeTableLocalId LocalIdType `xml:"TimeTableLocalId"`
-      SubjectLocalId LocalIdType `xml:"SubjectLocalId"`
-      TeachingGroupLocalId LocalIdType `xml:"TeachingGroupLocalId"`
-      RoomNumber HomeroomNumberType `xml:"RoomNumber"`
-      StaffLocalId LocalIdType `xml:"StaffLocalId"`
-      DayId LocalIdType `xml:"DayId"`
-      PeriodId LocalIdType `xml:"PeriodId"`
-      CellType string `xml:"CellType"`
-      SchoolInfoRefId IdRefType `xml:"SchoolInfoRefId"`
-      SchoolLocalId LocalIdType `xml:"SchoolLocalId"`
-      TeacherList ScheduledTeacherListType `xml:"TeacherList"`
-      RoomList RoomListType `xml:"RoomList"`
-      SIF_Metadata SIF_MetadataType `xml:"SIF_Metadata"`
-      SIF_ExtendedElements SIF_ExtendedElementsType `xml:"SIF_ExtendedElements"`
+        RefId RefIdType `xml:"RefId,attr" json:"-RefId"`
+      TimeTableRefId IdRefType `xml:"TimeTableRefId,omitempty" json:"TimeTableRefId"`
+      TimeTableSubjectRefId IdRefType `xml:"TimeTableSubjectRefId,omitempty" json:"TimeTableSubjectRefId"`
+      TeachingGroupRefId IdRefType `xml:"TeachingGroupRefId,omitempty" json:"TeachingGroupRefId"`
+      RoomInfoRefId IdRefType `xml:"RoomInfoRefId,omitempty" json:"RoomInfoRefId"`
+      StaffPersonalRefId IdRefType `xml:"StaffPersonalRefId,omitempty" json:"StaffPersonalRefId"`
+      TimeTableLocalId LocalIdType `xml:"TimeTableLocalId,omitempty" json:"TimeTableLocalId"`
+      SubjectLocalId LocalIdType `xml:"SubjectLocalId,omitempty" json:"SubjectLocalId"`
+      TeachingGroupLocalId LocalIdType `xml:"TeachingGroupLocalId,omitempty" json:"TeachingGroupLocalId"`
+      RoomNumber HomeroomNumberType `xml:"RoomNumber,omitempty" json:"RoomNumber"`
+      StaffLocalId LocalIdType `xml:"StaffLocalId,omitempty" json:"StaffLocalId"`
+      DayId LocalIdType `xml:"DayId,omitempty" json:"DayId"`
+      PeriodId LocalIdType `xml:"PeriodId,omitempty" json:"PeriodId"`
+      CellType string `xml:"CellType,omitempty" json:"CellType"`
+      SchoolInfoRefId IdRefType `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
+      SchoolLocalId LocalIdType `xml:"SchoolLocalId,omitempty" json:"SchoolLocalId"`
+      TeacherList ScheduledTeacherListType `xml:"TeacherList,omitempty" json:"TeacherList"`
+      RoomList RoomListType `xml:"RoomList,omitempty" json:"RoomList"`
+      SIF_Metadata SIF_MetadataType `xml:"SIF_Metadata,omitempty" json:"SIF_Metadata"`
+      SIF_ExtendedElements SIF_ExtendedElementsType `xml:"SIF_ExtendedElements,omitempty" json:"SIF_ExtendedElements"`
       
       }
     

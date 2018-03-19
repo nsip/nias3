@@ -2,19 +2,19 @@ package sifxml
 
 
     type StudentContactRelationship struct {
-        StudentContactRelationshipRefId IdRefType `xml:"StudentContactRelationshipRefId,attr"`
-      StudentPersonalRefId RefIdType `xml:"StudentPersonalRefId"`
-      StudentContactPersonalRefId RefIdType `xml:"StudentContactPersonalRefId"`
-      Relationship RelationshipType `xml:"Relationship"`
-      ParentRelationshipStatus string `xml:"ParentRelationshipStatus"`
-      HouseholdList HouseholdList `xml:"HouseholdList"`
-      ContactFlags ContactFlagsType `xml:"ContactFlags"`
-      MainlySpeaksEnglishAtHome string `xml:"MainlySpeaksEnglishAtHome"`
-      ContactSequence string `xml:"ContactSequence"`
-      ContactSequenceSource string `xml:"ContactSequenceSource"`
-      SchoolInfoRefId IdRefType `xml:"SchoolInfoRefId"`
-      SIF_Metadata SIF_MetadataType `xml:"SIF_Metadata"`
-      SIF_ExtendedElements SIF_ExtendedElementsType `xml:"SIF_ExtendedElements"`
+        StudentContactRelationshipRefId IdRefType `xml:"StudentContactRelationshipRefId,attr" json:"-StudentContactRelationshipRefId"`
+      StudentPersonalRefId RefIdType `xml:"StudentPersonalRefId,omitempty" json:"StudentPersonalRefId"`
+      StudentContactPersonalRefId RefIdType `xml:"StudentContactPersonalRefId,omitempty" json:"StudentContactPersonalRefId"`
+      Relationship RelationshipType `xml:"Relationship,omitempty" json:"Relationship"`
+      ParentRelationshipStatus string `xml:"ParentRelationshipStatus,omitempty" json:"ParentRelationshipStatus"`
+      HouseholdList HouseholdListType `xml:"HouseholdList,omitempty" json:"HouseholdList"`
+      ContactFlags ContactFlagsType `xml:"ContactFlags,omitempty" json:"ContactFlags"`
+      MainlySpeaksEnglishAtHome string `xml:"MainlySpeaksEnglishAtHome,omitempty" json:"MainlySpeaksEnglishAtHome"`
+      ContactSequence string `xml:"ContactSequence,omitempty" json:"ContactSequence"`
+      ContactSequenceSource string `xml:"ContactSequenceSource,omitempty" json:"ContactSequenceSource"`
+      SchoolInfoRefId IdRefType `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
+      SIF_Metadata SIF_MetadataType `xml:"SIF_Metadata,omitempty" json:"SIF_Metadata"`
+      SIF_ExtendedElements SIF_ExtendedElementsType `xml:"SIF_ExtendedElements,omitempty" json:"SIF_ExtendedElements"`
       
       }
     

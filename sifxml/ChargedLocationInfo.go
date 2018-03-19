@@ -2,19 +2,19 @@ package sifxml
 
 
     type ChargedLocationInfo struct {
-        RefId RefIdType `xml:"RefId,attr"`
-      LocationType string `xml:"LocationType"`
-      SiteCategory string `xml:"SiteCategory"`
-      Name string `xml:"Name"`
-      Description string `xml:"Description"`
-      LocalId LocalIdType `xml:"LocalId"`
-      StateProvinceId StateProvinceIdType `xml:"StateProvinceId"`
-      ParentChargedLocationInfoRefId IdRefType `xml:"ParentChargedLocationInfoRefId"`
-      SchoolInfoRefId IdRefType `xml:"SchoolInfoRefId"`
-      AddressList AddressListType `xml:"AddressList"`
-      PhoneNumberList PhoneNumberListType `xml:"PhoneNumberList"`
-      SIF_Metadata SIF_MetadataType `xml:"SIF_Metadata"`
-      SIF_ExtendedElements SIF_ExtendedElementsType `xml:"SIF_ExtendedElements"`
+        RefId RefIdType `xml:"RefId,attr" json:"-RefId"`
+      LocationType string `xml:"LocationType,omitempty" json:"LocationType"`
+      SiteCategory string `xml:"SiteCategory,omitempty" json:"SiteCategory"`
+      Name string `xml:"Name,omitempty" json:"Name"`
+      Description string `xml:"Description,omitempty" json:"Description"`
+      LocalId LocalIdType `xml:"LocalId,omitempty" json:"LocalId"`
+      StateProvinceId StateProvinceIdType `xml:"StateProvinceId,omitempty" json:"StateProvinceId"`
+      ParentChargedLocationInfoRefId IdRefType `xml:"ParentChargedLocationInfoRefId,omitempty" json:"ParentChargedLocationInfoRefId"`
+      SchoolInfoRefId IdRefType `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
+      AddressList AddressListType `xml:"AddressList,omitempty" json:"AddressList"`
+      PhoneNumberList PhoneNumberListType `xml:"PhoneNumberList,omitempty" json:"PhoneNumberList"`
+      SIF_Metadata SIF_MetadataType `xml:"SIF_Metadata,omitempty" json:"SIF_Metadata"`
+      SIF_ExtendedElements SIF_ExtendedElementsType `xml:"SIF_ExtendedElements,omitempty" json:"SIF_ExtendedElements"`
       
       }
     
