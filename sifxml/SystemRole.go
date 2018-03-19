@@ -30,7 +30,6 @@ type SystemRole_SystemContextList struct {
         if err != nil {
                 return err
         }
-        log.Println(t)
         if t == json.Delim('[') {
                 aux := &struct{ *Alias }{Alias: (*Alias)(this)}
                 if err := json.Unmarshal(data, &aux); err != nil {
@@ -57,7 +56,6 @@ type SystemRole_RoleList struct {
         if err != nil {
                 return err
         }
-        log.Println(t)
         if t == json.Delim('[') {
                 aux := &struct{ *Alias }{Alias: (*Alias)(this)}
                 if err := json.Unmarshal(data, &aux); err != nil {
@@ -84,7 +82,6 @@ type SystemRole_RoleScopeList struct {
         if err != nil {
                 return err
         }
-        log.Println(t)
         if t == json.Delim('[') {
                 aux := &struct{ *Alias }{Alias: (*Alias)(this)}
                 if err := json.Unmarshal(data, &aux); err != nil {

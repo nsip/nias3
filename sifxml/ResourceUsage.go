@@ -32,7 +32,6 @@ type ResourceUsage_ResourceReportColumnList struct {
         if err != nil {
                 return err
         }
-        log.Println(t)
         if t == json.Delim('[') {
                 aux := &struct{ *Alias }{Alias: (*Alias)(this)}
                 if err := json.Unmarshal(data, &aux); err != nil {
@@ -55,7 +54,6 @@ type ResourceUsage_ResourceReportLineList struct {
         if err != nil {
                 return err
         }
-        log.Println(t)
         if t == json.Delim('[') {
                 aux := &struct{ *Alias }{Alias: (*Alias)(this)}
                 if err := json.Unmarshal(data, &aux); err != nil {
