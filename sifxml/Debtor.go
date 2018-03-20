@@ -4,7 +4,7 @@ package sifxml
     type Debtor struct {
         RefId RefIdType `xml:"RefId,attr" json:"-RefId"`
       BilledEntity Debtor_BilledEntity `xml:"BilledEntity,omitempty" json:"BilledEntity"`
-      AddressList string `xml:"AddressList,omitempty" json:"AddressList"`
+      AddressList AddressListType `xml:"AddressList,omitempty" json:"AddressList"`
       BillingName string `xml:"BillingName,omitempty" json:"BillingName"`
       BillingNote string `xml:"BillingNote,omitempty" json:"BillingNote"`
       Discount string `xml:"Discount,omitempty" json:"Discount"`

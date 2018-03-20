@@ -10,8 +10,8 @@ import (
         RefId RefIdType `xml:"RefId,attr" json:"-RefId"`
       SIF_RefId SystemRole_SIF_RefId `xml:"SIF_RefId,omitempty" json:"SIF_RefId"`
       SystemContextList SystemRole_SystemContextList `xml:"SystemContextList,omitempty" json:"SystemContextList"`
-      SIF_Metadata string `xml:"SIF_Metadata,omitempty" json:"SIF_Metadata"`
-      SIF_ExtendedElements string `xml:"SIF_ExtendedElements,omitempty" json:"SIF_ExtendedElements"`
+      SIF_Metadata SIF_MetadataType `xml:"SIF_Metadata,omitempty" json:"SIF_Metadata"`
+      SIF_ExtendedElements SIF_ExtendedElementsType `xml:"SIF_ExtendedElements,omitempty" json:"SIF_ExtendedElements"`
       
       }
     type SystemRole_SIF_RefId struct {
@@ -98,5 +98,5 @@ type SystemRole_RoleScope struct {
 }
 type SystemRole_RoleScopeRefId struct {
       SIF_RefObject string `xml:"SIF_RefObject,attr" json:"-SIF_RefObject"`
-      Value string `xml:",chardata" json:"Value"`
+      Value IdRefType `xml:",chardata" json:"Value"`
 }
