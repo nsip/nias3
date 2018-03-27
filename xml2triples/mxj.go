@@ -1,9 +1,10 @@
-package main
+package xml2triples
 
 import (
 	"encoding/json"
 	"fmt"
 	"github.com/clbanning/mxj"
+	"github.com/nsip/nias3/datastore"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/tidwall/sjson"
 	"log"
@@ -220,18 +221,18 @@ func Map2SIFXML(m mxj.Map) ([]byte, error) {
 	return Root2SIF(root, []byte(changeJSONTags(string(j))))
 }
 
-func put_triple(batch *leveldb.Batch, triple Triple) {
-	log.Printf("s:%s p:%s o:%s", strconv.Quote(triple.s), strconv.Quote(triple.p), strconv.Quote(triple.o))
-	batch.Put([]byte(fmt.Sprintf("s:%s p:%s o:%s", strconv.Quote(triple.s), strconv.Quote(triple.p), strconv.Quote(triple.o))), []byte(fmt.Sprintf("s:%s p:%s o:%s", strconv.Quote(triple.s), strconv.Quote(triple.p), strconv.Quote(triple.o))))
-	batch.Put([]byte(fmt.Sprintf("s:%s o:%s p:%s", strconv.Quote(triple.s), strconv.Quote(triple.o), strconv.Quote(triple.p))), []byte(fmt.Sprintf("s:%s p:%s o:%s", strconv.Quote(triple.s), strconv.Quote(triple.p), strconv.Quote(triple.o))))
-	batch.Put([]byte(fmt.Sprintf("p:%s s:%s o:%s", strconv.Quote(triple.p), strconv.Quote(triple.s), strconv.Quote(triple.o))), []byte(fmt.Sprintf("s:%s p:%s o:%s", strconv.Quote(triple.s), strconv.Quote(triple.p), strconv.Quote(triple.o))))
-	batch.Put([]byte(fmt.Sprintf("p:%s o:%s s:%s", strconv.Quote(triple.p), strconv.Quote(triple.o), strconv.Quote(triple.s))), []byte(fmt.Sprintf("s:%s p:%s o:%s", strconv.Quote(triple.s), strconv.Quote(triple.p), strconv.Quote(triple.o))))
-	batch.Put([]byte(fmt.Sprintf("o:%s p:%s s:%s", strconv.Quote(triple.o), strconv.Quote(triple.p), strconv.Quote(triple.s))), []byte(fmt.Sprintf("s:%s p:%s o:%s", strconv.Quote(triple.s), strconv.Quote(triple.p), strconv.Quote(triple.o))))
-	batch.Put([]byte(fmt.Sprintf("o:%s s:%s p:%s", strconv.Quote(triple.o), strconv.Quote(triple.s), strconv.Quote(triple.p))), []byte(fmt.Sprintf("s:%s p:%s o:%s", strconv.Quote(triple.s), strconv.Quote(triple.p), strconv.Quote(triple.o))))
+func put_triple(batch *leveldb.Batch, triple datastore.Triple) {
+	log.Printf("s:%s p:%s o:%s", strconv.Quote(triple.S), strconv.Quote(triple.P), strconv.Quote(triple.O))
+	batch.Put([]byte(fmt.Sprintf("s:%s p:%s o:%s", strconv.Quote(triple.S), strconv.Quote(triple.P), strconv.Quote(triple.O))), []byte(fmt.Sprintf("s:%s p:%s o:%s", strconv.Quote(triple.S), strconv.Quote(triple.P), strconv.Quote(triple.O))))
+	batch.Put([]byte(fmt.Sprintf("s:%s o:%s p:%s", strconv.Quote(triple.S), strconv.Quote(triple.O), strconv.Quote(triple.P))), []byte(fmt.Sprintf("s:%s p:%s o:%s", strconv.Quote(triple.S), strconv.Quote(triple.P), strconv.Quote(triple.O))))
+	batch.Put([]byte(fmt.Sprintf("p:%s s:%s o:%s", strconv.Quote(triple.P), strconv.Quote(triple.S), strconv.Quote(triple.O))), []byte(fmt.Sprintf("s:%s p:%s o:%s", strconv.Quote(triple.S), strconv.Quote(triple.P), strconv.Quote(triple.O))))
+	batch.Put([]byte(fmt.Sprintf("p:%s o:%s s:%s", strconv.Quote(triple.P), strconv.Quote(triple.O), strconv.Quote(triple.S))), []byte(fmt.Sprintf("s:%s p:%s o:%s", strconv.Quote(triple.S), strconv.Quote(triple.P), strconv.Quote(triple.O))))
+	batch.Put([]byte(fmt.Sprintf("o:%s p:%s s:%s", strconv.Quote(triple.O), strconv.Quote(triple.P), strconv.Quote(triple.S))), []byte(fmt.Sprintf("s:%s p:%s o:%s", strconv.Quote(triple.S), strconv.Quote(triple.P), strconv.Quote(triple.O))))
+	batch.Put([]byte(fmt.Sprintf("o:%s s:%s p:%s", strconv.Quote(triple.O), strconv.Quote(triple.S), strconv.Quote(triple.P))), []byte(fmt.Sprintf("s:%s p:%s o:%s", strconv.Quote(triple.S), strconv.Quote(triple.P), strconv.Quote(triple.O))))
 }
 
-func storeXMLasDBtriples(s []byte) (string, error) {
-	db := GetDB()
+func StoreXMLasDBtriples(s []byte) (string, error) {
+	db := datastore.GetDB()
 	batch := new(leveldb.Batch)
 	m, err := mxj.NewMapXml(s)
 	if err != nil {
@@ -242,7 +243,7 @@ func storeXMLasDBtriples(s []byte) (string, error) {
 		return "", err
 	}
 	for _, n := range m.LeafNodes() {
-		put_triple(batch, Triple{s: fmt.Sprintf("%v", refid), p: n.Path, o: fmt.Sprintf("%v", n.Value)})
+		put_triple(batch, datastore.Triple{S: fmt.Sprintf("%v", refid), P: n.Path, O: fmt.Sprintf("%v", n.Value)})
 	}
 	batcherr := db.Write(batch, nil)
 	if batcherr != nil {
@@ -260,15 +261,15 @@ func mxj2sjsonPath(p string) string {
 		mxj2sjsonPathRe2.ReplaceAllString(p, ".Value"), ".$1")
 }
 
-func dbTriples2XML(refid string) ([]byte, error) {
-	triple_strings := getIdentifiers(fmt.Sprintf("s:%s ", strconv.Quote(fmt.Sprintf("%v", refid))))
-	triples := parseTriples(triple_strings)
+func DbTriples2XML(refid string) ([]byte, error) {
+	triple_strings := datastore.GetIdentifiers(fmt.Sprintf("s:%s ", strconv.Quote(fmt.Sprintf("%v", refid))))
+	triples := datastore.ParseTriples(triple_strings)
 	json := ""
 	var err error
 	for _, t := range triples {
-		//log.Printf("%s %s %s\n", t.s, t.p, t.o)
-		//log.Printf("%s %s %s\n", t.s, mxj2sjsonPath(t.p), t.o)
-		json, err = sjson.Set(json, mxj2sjsonPath(t.p), t.o)
+		//log.Printf("%s %s %s\n", t.S, t.P, t.O)
+		//log.Printf("%s %s %s\n", t.S, mxj2sjsonPath(t.P), t.O)
+		json, err = sjson.Set(json, mxj2sjsonPath(t.P), t.O)
 		if err != nil {
 			return nil, err
 		}
@@ -305,10 +306,4 @@ func stripEmptyTags(s []byte) []byte {
 	}
 	s = []byte(strings.Join(arr, ""))
 	return s
-}
-
-func main() {
-	refid, _ := storeXMLasDBtriples(staff_personal)
-	x, _ := dbTriples2XML(refid)
-	log.Printf("Map2SIFXML\n%+v\n", string(x))
 }

@@ -1,4 +1,4 @@
-package main
+package xml2triples
 
 import (
 	"encoding/json"

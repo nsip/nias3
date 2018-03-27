@@ -1,4 +1,4 @@
-package main
+package datastore
 
 import (
 	"fmt"
@@ -15,8 +15,6 @@ import (
 
 var db *leveldb.DB
 var dbOpen bool = false
-
-//var ge = GobEncoder{}
 
 // if allow_empty is false, abort if database is empty: enforces
 // requirement to run ingest first
@@ -74,7 +72,7 @@ func openDB() {
 	dbOpen = true
 }
 
-func dataDump() {
+func DataDump() {
 	iter := GetDB().NewIterator(nil, nil)
 	for iter.Next() {
 		log.Printf("RETRIEVED KEY: %+v VALUE: %+v\n", string(iter.Key()), string(iter.Value()))
@@ -92,7 +90,7 @@ func dataDump() {
 // can be used in a Get operation to retreive the
 // desired object
 //
-func getIdentifiers(keyPrefix string) []string {
+func GetIdentifiers(keyPrefix string) []string {
 
 	db = GetDB()
 	objIDs := make([]string, 0)
@@ -115,12 +113,12 @@ func getIdentifiers(keyPrefix string) []string {
 }
 
 type Triple struct {
-	s string
-	p string
-	o string
+	S string
+	P string
+	O string
 }
 
-func parseTriples(list []string) []Triple {
+func ParseTriples(list []string) []Triple {
 	ret := make([]Triple, 0)
 	for _, t := range list {
 		var s scanner.Scanner
@@ -130,17 +128,17 @@ func parseTriples(list []string) []Triple {
 			if s.TokenText() == "s" {
 				tok = s.Scan() // colon
 				tok = s.Scan()
-				o.s, _ = strconv.Unquote(s.TokenText())
+				o.S, _ = strconv.Unquote(s.TokenText())
 			}
 			if s.TokenText() == "p" {
 				tok = s.Scan() // colon
 				tok = s.Scan()
-				o.p, _ = strconv.Unquote(s.TokenText())
+				o.P, _ = strconv.Unquote(s.TokenText())
 			}
 			if s.TokenText() == "o" {
 				tok = s.Scan() // colon
 				tok = s.Scan()
-				o.o, _ = strconv.Unquote(s.TokenText())
+				o.O, _ = strconv.Unquote(s.TokenText())
 			}
 		}
 		ret = append(ret, o)
