@@ -74,9 +74,11 @@ var staff_personal = []byte(`
 <StaffPersonal RefId="D3E34F41-9D75-101A-8C3D-00AA001A1652">
   <LocalId>946379881</LocalId>
   <StateProvinceId>C2345681</StateProvinceId>
+  <!--
   <ElectronicIdList>
     <ElectronicId Type="01">206655</ElectronicId>
   </ElectronicIdList>
+  -->
   <OtherIdList>
     <OtherId Type="0004">333333333</OtherId>
   </OtherIdList>

@@ -3,13 +3,13 @@ package sifxml
 
     type WellbeingEvent struct {
         RefId RefIdType `xml:"RefId,attr" json:"-RefId"`
-      StudentPersonalRefId IdRefType `xml:"StudentPersonalRefId,omitempty" json:"StudentPersonalRefId"`
-      SchoolInfoRefId IdRefType `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
+      StudentPersonalRefId string `xml:"StudentPersonalRefId,omitempty" json:"StudentPersonalRefId"`
+      SchoolInfoRefId string `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
       EventId LocalIdType `xml:"EventId,omitempty" json:"EventId"`
       WellbeingEventNotes string `xml:"WellbeingEventNotes,omitempty" json:"WellbeingEventNotes"`
       WellbeingEventCategoryClass string `xml:"WellbeingEventCategoryClass,omitempty" json:"WellbeingEventCategoryClass"`
       WellbeingEventCategoryList WellbeingEventCategoryListType `xml:"WellbeingEventCategoryList,omitempty" json:"WellbeingEventCategoryList"`
-      ReportingStaffRefId IdRefType `xml:"ReportingStaffRefId,omitempty" json:"ReportingStaffRefId"`
+      ReportingStaffRefId string `xml:"ReportingStaffRefId,omitempty" json:"ReportingStaffRefId"`
       WellbeingEventLocationDetails WellbeingEventLocationDetailsType `xml:"WellbeingEventLocationDetails,omitempty" json:"WellbeingEventLocationDetails"`
       WellbeingEventCreationTimeStamp string `xml:"WellbeingEventCreationTimeStamp,omitempty" json:"WellbeingEventCreationTimeStamp"`
       WellbeingEventDate string `xml:"WellbeingEventDate,omitempty" json:"WellbeingEventDate"`

@@ -3,9 +3,9 @@ package sifxml
 
     type NAPTestScoreSummary struct {
         RefId RefIdType `xml:"RefId,attr" json:"-RefId"`
-      SchoolInfoRefId IdRefType `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
+      SchoolInfoRefId string `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
       SchoolACARAId LocalIdType `xml:"SchoolACARAId,omitempty" json:"SchoolACARAId"`
-      NAPTestRefId IdRefType `xml:"NAPTestRefId,omitempty" json:"NAPTestRefId"`
+      NAPTestRefId string `xml:"NAPTestRefId,omitempty" json:"NAPTestRefId"`
       NAPTestLocalId LocalIdType `xml:"NAPTestLocalId,omitempty" json:"NAPTestLocalId"`
       DomainNationalAverage string `xml:"DomainNationalAverage,omitempty" json:"DomainNationalAverage"`
       DomainSchoolAverage string `xml:"DomainSchoolAverage,omitempty" json:"DomainSchoolAverage"`

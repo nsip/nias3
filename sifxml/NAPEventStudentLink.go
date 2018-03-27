@@ -3,11 +3,11 @@ package sifxml
 
     type NAPEventStudentLink struct {
         RefId RefIdType `xml:"RefId,attr" json:"-RefId"`
-      StudentPersonalRefId IdRefType `xml:"StudentPersonalRefId,omitempty" json:"StudentPersonalRefId"`
+      StudentPersonalRefId string `xml:"StudentPersonalRefId,omitempty" json:"StudentPersonalRefId"`
       PlatformStudentIdentifier LocalIdType `xml:"PlatformStudentIdentifier,omitempty" json:"PlatformStudentIdentifier"`
-      SchoolInfoRefId IdRefType `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
+      SchoolInfoRefId string `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
       SchoolACARAId LocalIdType `xml:"SchoolACARAId,omitempty" json:"SchoolACARAId"`
-      NAPTestRefId IdRefType `xml:"NAPTestRefId,omitempty" json:"NAPTestRefId"`
+      NAPTestRefId string `xml:"NAPTestRefId,omitempty" json:"NAPTestRefId"`
       NAPTestLocalId LocalIdType `xml:"NAPTestLocalId,omitempty" json:"NAPTestLocalId"`
       SchoolSector string `xml:"SchoolSector,omitempty" json:"SchoolSector"`
       System string `xml:"System,omitempty" json:"System"`

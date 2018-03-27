@@ -3,9 +3,9 @@ package sifxml
 
     type StaffAssignment struct {
         RefId RefIdType `xml:"RefId,attr" json:"-RefId"`
-      SchoolInfoRefId IdRefType `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
+      SchoolInfoRefId string `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
       SchoolYear SchoolYearType `xml:"SchoolYear,omitempty" json:"SchoolYear"`
-      StaffPersonalRefId IdRefType `xml:"StaffPersonalRefId,omitempty" json:"StaffPersonalRefId"`
+      StaffPersonalRefId string `xml:"StaffPersonalRefId,omitempty" json:"StaffPersonalRefId"`
       Description string `xml:"Description,omitempty" json:"Description"`
       PrimaryAssignment string `xml:"PrimaryAssignment,omitempty" json:"PrimaryAssignment"`
       JobStartDate string `xml:"JobStartDate,omitempty" json:"JobStartDate"`

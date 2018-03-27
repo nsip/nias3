@@ -125,9 +125,9 @@ import (
 }
     
     type RelatedLearningStandardItemRefIdType struct {
-        IdRefType
           RelationshipType string `xml:"RelationshipType,attr" json:"-RelationshipType"`
       
+        Value string `xml:",chardata" json:"Value"`
       }
     
     type ValidLetterMarkListType struct {
@@ -216,7 +216,7 @@ import (
 }
     
     type AssignmentScoreType struct {
-        GradingAssignmentScoreRefId IdRefType `xml:"GradingAssignmentScoreRefId,omitempty" json:"GradingAssignmentScoreRefId"`
+        GradingAssignmentScoreRefId string `xml:"GradingAssignmentScoreRefId,omitempty" json:"GradingAssignmentScoreRefId"`
       Weight string `xml:"Weight,omitempty" json:"Weight"`
       
       }
@@ -226,7 +226,7 @@ import (
       Numeric string `xml:"Numeric,omitempty" json:"Numeric"`
       Letter string `xml:"Letter,omitempty" json:"Letter"`
       Narrative string `xml:"Narrative,omitempty" json:"Narrative"`
-      MarkInfoRefId IdRefType `xml:"MarkInfoRefId,omitempty" json:"MarkInfoRefId"`
+      MarkInfoRefId string `xml:"MarkInfoRefId,omitempty" json:"MarkInfoRefId"`
       
       }
     
@@ -255,7 +255,7 @@ import (
 }
     
     type LearningStandardType struct {
-        LearningStandardItemRefId []IdRefType `xml:"LearningStandardItemRefId,omitempty" json:"LearningStandardItemRefId"`
+        LearningStandardItemRefId []string `xml:"LearningStandardItemRefId,omitempty" json:"LearningStandardItemRefId"`
       LearningStandardURL string `xml:"LearningStandardURL,omitempty" json:"LearningStandardURL"`
       LearningStandardLocalId LocalIdType `xml:"LearningStandardLocalId,omitempty" json:"LearningStandardLocalId"`
       
@@ -281,7 +281,7 @@ import (
 }
     
     type AssignmentListType struct {
-        GradingAssignmentRefId []IdRefType `xml:"GradingAssignmentRefId,omitempty" json:"GradingAssignmentRefId"`
+        GradingAssignmentRefId []string `xml:"GradingAssignmentRefId,omitempty" json:"GradingAssignmentRefId"`
       
       }
     func (this *AssignmentListType) UnmarshalJSON(data []byte) error {
@@ -430,7 +430,7 @@ import (
 }
     
     type FollowUpActionType struct {
-        WellbeingResponseRefId IdRefType `xml:"WellbeingResponseRefId,omitempty" json:"WellbeingResponseRefId"`
+        WellbeingResponseRefId string `xml:"WellbeingResponseRefId,omitempty" json:"WellbeingResponseRefId"`
       FollowUpDetails string `xml:"FollowUpDetails,omitempty" json:"FollowUpDetails"`
       FollowUpActionCategory string `xml:"FollowUpActionCategory,omitempty" json:"FollowUpActionCategory"`
       
@@ -495,9 +495,9 @@ import (
         WithdrawalDate string `xml:"WithdrawalDate,omitempty" json:"WithdrawalDate"`
       WithdrawalStartTime string `xml:"WithdrawalStartTime,omitempty" json:"WithdrawalStartTime"`
       WithdrawalEndTime string `xml:"WithdrawalEndTime,omitempty" json:"WithdrawalEndTime"`
-      TimeTableSubjectRefId IdRefType `xml:"TimeTableSubjectRefId,omitempty" json:"TimeTableSubjectRefId"`
-      ScheduledActivityRefId IdRefType `xml:"ScheduledActivityRefId,omitempty" json:"ScheduledActivityRefId"`
-      TimeTableCellRefId IdRefType `xml:"TimeTableCellRefId,omitempty" json:"TimeTableCellRefId"`
+      TimeTableSubjectRefId string `xml:"TimeTableSubjectRefId,omitempty" json:"TimeTableSubjectRefId"`
+      ScheduledActivityRefId string `xml:"ScheduledActivityRefId,omitempty" json:"ScheduledActivityRefId"`
+      TimeTableCellRefId string `xml:"TimeTableCellRefId,omitempty" json:"TimeTableCellRefId"`
       
       }
     
@@ -553,7 +553,7 @@ import (
 }
     
     type WellbeingPlanType struct {
-        PersonalisedPlanRefId IdRefType `xml:"PersonalisedPlanRefId,omitempty" json:"PersonalisedPlanRefId"`
+        PersonalisedPlanRefId string `xml:"PersonalisedPlanRefId,omitempty" json:"PersonalisedPlanRefId"`
       PlanNotes string `xml:"PlanNotes,omitempty" json:"PlanNotes"`
       
       }
@@ -708,7 +708,7 @@ import (
 }
     
     type SubstituteItemType struct {
-        SubstituteItemRefId IdRefType `xml:"SubstituteItemRefId,omitempty" json:"SubstituteItemRefId"`
+        SubstituteItemRefId string `xml:"SubstituteItemRefId,omitempty" json:"SubstituteItemRefId"`
       SubstituteItemLocalId LocalIdType `xml:"SubstituteItemLocalId,omitempty" json:"SubstituteItemLocalId"`
       PNPCodeList PNPCodeListType `xml:"PNPCodeList,omitempty" json:"PNPCodeList"`
       
@@ -739,7 +739,7 @@ import (
 }
     
     type CodeFrameTestItemType struct {
-        TestItemRefId IdRefType `xml:"TestItemRefId,omitempty" json:"TestItemRefId"`
+        TestItemRefId string `xml:"TestItemRefId,omitempty" json:"TestItemRefId"`
       SequenceNumber string `xml:"SequenceNumber,omitempty" json:"SequenceNumber"`
       TestItemContent NAPTestItemContentType `xml:"TestItemContent,omitempty" json:"TestItemContent"`
       
@@ -830,7 +830,7 @@ import (
 }
     
     type NAPTestItem2Type struct {
-        TestItemRefId IdRefType `xml:"TestItemRefId,omitempty" json:"TestItemRefId"`
+        TestItemRefId string `xml:"TestItemRefId,omitempty" json:"TestItemRefId"`
       TestItemLocalId LocalIdType `xml:"TestItemLocalId,omitempty" json:"TestItemLocalId"`
       SequenceNumber string `xml:"SequenceNumber,omitempty" json:"SequenceNumber"`
       
@@ -861,7 +861,7 @@ import (
 }
     
     type NAPTestletCodeFrameType struct {
-        NAPTestletRefId IdRefType `xml:"NAPTestletRefId,omitempty" json:"NAPTestletRefId"`
+        NAPTestletRefId string `xml:"NAPTestletRefId,omitempty" json:"NAPTestletRefId"`
       TestletContent NAPTestletContentType `xml:"TestletContent,omitempty" json:"TestletContent"`
       TestItemList CodeFrameTestItemListType `xml:"TestItemList,omitempty" json:"TestItemList"`
       
@@ -892,7 +892,7 @@ import (
 }
     
     type NAPTestletResponseType struct {
-        NAPTestletRefId IdRefType `xml:"NAPTestletRefId,omitempty" json:"NAPTestletRefId"`
+        NAPTestletRefId string `xml:"NAPTestletRefId,omitempty" json:"NAPTestletRefId"`
       NAPTestletLocalId LocalIdType `xml:"NAPTestletLocalId,omitempty" json:"NAPTestletLocalId"`
       TestletSubScore string `xml:"TestletSubScore,omitempty" json:"TestletSubScore"`
       ItemResponseList NAPTestletItemResponseListType `xml:"ItemResponseList,omitempty" json:"ItemResponseList"`
@@ -924,7 +924,7 @@ import (
 }
     
     type NAPTestletResponseItemType struct {
-        NAPTestItemRefId IdRefType `xml:"NAPTestItemRefId,omitempty" json:"NAPTestItemRefId"`
+        NAPTestItemRefId string `xml:"NAPTestItemRefId,omitempty" json:"NAPTestItemRefId"`
       NAPTestItemLocalId LocalIdType `xml:"NAPTestItemLocalId,omitempty" json:"NAPTestItemLocalId"`
       Response string `xml:"Response,omitempty" json:"Response"`
       ResponseCorrectness string `xml:"ResponseCorrectness,omitempty" json:"ResponseCorrectness"`
@@ -1206,7 +1206,7 @@ import (
       }
     
     type CalendarSummaryListType struct {
-        CalendarSummaryRefId []IdRefType `xml:"CalendarSummaryRefId,omitempty" json:"CalendarSummaryRefId"`
+        CalendarSummaryRefId []string `xml:"CalendarSummaryRefId,omitempty" json:"CalendarSummaryRefId"`
       
       }
     func (this *CalendarSummaryListType) UnmarshalJSON(data []byte) error {
@@ -1745,15 +1745,15 @@ import (
       AttendanceCode AttendanceCodeType `xml:"AttendanceCode,omitempty" json:"AttendanceCode"`
       AttendanceStatus string `xml:"AttendanceStatus,omitempty" json:"AttendanceStatus"`
       Date string `xml:"Date,omitempty" json:"Date"`
-      SessionInfoRefId IdRefType `xml:"SessionInfoRefId,omitempty" json:"SessionInfoRefId"`
-      ScheduledActivityRefId IdRefType `xml:"ScheduledActivityRefId,omitempty" json:"ScheduledActivityRefId"`
+      SessionInfoRefId string `xml:"SessionInfoRefId,omitempty" json:"SessionInfoRefId"`
+      ScheduledActivityRefId string `xml:"ScheduledActivityRefId,omitempty" json:"ScheduledActivityRefId"`
       TimetablePeriod string `xml:"TimetablePeriod,omitempty" json:"TimetablePeriod"`
       DayId LocalIdType `xml:"DayId,omitempty" json:"DayId"`
       StartTime string `xml:"StartTime,omitempty" json:"StartTime"`
       EndTime string `xml:"EndTime,omitempty" json:"EndTime"`
       TimeIn string `xml:"TimeIn,omitempty" json:"TimeIn"`
       TimeOut string `xml:"TimeOut,omitempty" json:"TimeOut"`
-      TimeTableCellRefId IdRefType `xml:"TimeTableCellRefId,omitempty" json:"TimeTableCellRefId"`
+      TimeTableCellRefId string `xml:"TimeTableCellRefId,omitempty" json:"TimeTableCellRefId"`
       TimeTableSubjectRefId RefIdType `xml:"TimeTableSubjectRefId,omitempty" json:"TimeTableSubjectRefId"`
       TeacherList ScheduledTeacherListType `xml:"TeacherList,omitempty" json:"TeacherList"`
       RoomList RoomListType `xml:"RoomList,omitempty" json:"RoomList"`
@@ -1793,7 +1793,7 @@ import (
       }
     
     type TeachingGroupListType struct {
-        TeachingGroupRefId []IdRefType `xml:"TeachingGroupRefId,omitempty" json:"TeachingGroupRefId"`
+        TeachingGroupRefId []string `xml:"TeachingGroupRefId,omitempty" json:"TeachingGroupRefId"`
       
       }
     func (this *TeachingGroupListType) UnmarshalJSON(data []byte) error {
@@ -1841,7 +1841,7 @@ import (
 }
     
     type TeacherCoverType struct {
-        StaffPersonalRefId IdRefType `xml:"StaffPersonalRefId,omitempty" json:"StaffPersonalRefId"`
+        StaffPersonalRefId string `xml:"StaffPersonalRefId,omitempty" json:"StaffPersonalRefId"`
       StaffLocalId LocalIdType `xml:"StaffLocalId,omitempty" json:"StaffLocalId"`
       StartTime string `xml:"StartTime,omitempty" json:"StartTime"`
       FinishTime string `xml:"FinishTime,omitempty" json:"FinishTime"`
@@ -1852,7 +1852,7 @@ import (
       }
     
     type RoomListType struct {
-        RoomInfoRefId []IdRefType `xml:"RoomInfoRefId,omitempty" json:"RoomInfoRefId"`
+        RoomInfoRefId []string `xml:"RoomInfoRefId,omitempty" json:"RoomInfoRefId"`
       
       }
     func (this *RoomListType) UnmarshalJSON(data []byte) error {
@@ -1876,7 +1876,7 @@ import (
 }
     
     type StaffListType struct {
-        StaffPersonalRefId []IdRefType `xml:"StaffPersonalRefId,omitempty" json:"StaffPersonalRefId"`
+        StaffPersonalRefId []string `xml:"StaffPersonalRefId,omitempty" json:"StaffPersonalRefId"`
       
       }
     func (this *StaffListType) UnmarshalJSON(data []byte) error {
@@ -2035,7 +2035,7 @@ import (
     type ExpenseAccountType struct {
         AccountCode string `xml:"AccountCode,omitempty" json:"AccountCode"`
       Amount MonetaryAmountType `xml:"Amount,omitempty" json:"Amount"`
-      FinancialAccountRefId IdRefType `xml:"FinancialAccountRefId,omitempty" json:"FinancialAccountRefId"`
+      FinancialAccountRefId string `xml:"FinancialAccountRefId,omitempty" json:"FinancialAccountRefId"`
       AccountingPeriod LocalIdType `xml:"AccountingPeriod,omitempty" json:"AccountingPeriod"`
       
       }
@@ -2144,9 +2144,9 @@ import (
 }
     
     type ResourcesType struct {
-        IdRefType
           ResourceType string `xml:"ResourceType,attr" json:"-ResourceType"`
       
+        Value string `xml:",chardata" json:"Value"`
       }
     
     type SourceObjectsType struct {
@@ -2174,7 +2174,7 @@ import (
 }
     
     type StudentsType struct {
-        StudentPersonalRefId []IdRefType `xml:"StudentPersonalRefId,omitempty" json:"StudentPersonalRefId"`
+        StudentPersonalRefId []string `xml:"StudentPersonalRefId,omitempty" json:"StudentPersonalRefId"`
       
       }
     func (this *StudentsType) UnmarshalJSON(data []byte) error {
@@ -2363,7 +2363,7 @@ import (
 }
     
     type LearningStandardsType struct {
-        LearningStandardItemRefId []IdRefType `xml:"LearningStandardItemRefId,omitempty" json:"LearningStandardItemRefId"`
+        LearningStandardItemRefId []string `xml:"LearningStandardItemRefId,omitempty" json:"LearningStandardItemRefId"`
       
       }
     func (this *LearningStandardsType) UnmarshalJSON(data []byte) error {
@@ -2387,7 +2387,7 @@ import (
 }
     
     type LearningResourcesType struct {
-        LearningResourceRefId []IdRefType `xml:"LearningResourceRefId,omitempty" json:"LearningResourceRefId"`
+        LearningResourceRefId []string `xml:"LearningResourceRefId,omitempty" json:"LearningResourceRefId"`
       
       }
     func (this *LearningResourcesType) UnmarshalJSON(data []byte) error {
@@ -2411,7 +2411,7 @@ import (
 }
     
     type LearningStandardsDocumentType struct {
-        LearningStandardDocumentRefId []IdRefType `xml:"LearningStandardDocumentRefId,omitempty" json:"LearningStandardDocumentRefId"`
+        LearningStandardDocumentRefId []string `xml:"LearningStandardDocumentRefId,omitempty" json:"LearningStandardDocumentRefId"`
       
       }
     func (this *LearningStandardsDocumentType) UnmarshalJSON(data []byte) error {
@@ -2632,7 +2632,7 @@ import (
       }
     
     type FinancialAccountRefIdListType struct {
-        FinancialAccountRefId []IdRefType `xml:"FinancialAccountRefId,omitempty" json:"FinancialAccountRefId"`
+        FinancialAccountRefId []string `xml:"FinancialAccountRefId,omitempty" json:"FinancialAccountRefId"`
       
       }
     func (this *FinancialAccountRefIdListType) UnmarshalJSON(data []byte) error {
@@ -2710,7 +2710,7 @@ import (
       }
     
     type CharacteristicsType struct {
-        AggregateCharacteristicInfoRefId []IdRefType `xml:"AggregateCharacteristicInfoRefId,omitempty" json:"AggregateCharacteristicInfoRefId"`
+        AggregateCharacteristicInfoRefId []string `xml:"AggregateCharacteristicInfoRefId,omitempty" json:"AggregateCharacteristicInfoRefId"`
       
       }
     func (this *CharacteristicsType) UnmarshalJSON(data []byte) error {
@@ -2790,7 +2790,7 @@ import (
 }
     
     type TeachingGroupPeriodType struct {
-        TimeTableCellRefId IdRefType `xml:"TimeTableCellRefId,omitempty" json:"TimeTableCellRefId"`
+        TimeTableCellRefId string `xml:"TimeTableCellRefId,omitempty" json:"TimeTableCellRefId"`
       RoomNumber HomeroomNumberType `xml:"RoomNumber,omitempty" json:"RoomNumber"`
       StaffLocalId LocalIdType `xml:"StaffLocalId,omitempty" json:"StaffLocalId"`
       DayId LocalIdType `xml:"DayId,omitempty" json:"DayId"`
@@ -2825,7 +2825,7 @@ import (
 }
     
     type TeachingGroupTeacherType struct {
-        StaffPersonalRefId IdRefType `xml:"StaffPersonalRefId,omitempty" json:"StaffPersonalRefId"`
+        StaffPersonalRefId string `xml:"StaffPersonalRefId,omitempty" json:"StaffPersonalRefId"`
       StaffLocalId LocalIdType `xml:"StaffLocalId,omitempty" json:"StaffLocalId"`
       Name NameOfRecordType `xml:"Name,omitempty" json:"Name"`
       Association string `xml:"Association,omitempty" json:"Association"`
@@ -2857,7 +2857,7 @@ import (
 }
     
     type TeachingGroupStudentType struct {
-        StudentPersonalRefId IdRefType `xml:"StudentPersonalRefId,omitempty" json:"StudentPersonalRefId"`
+        StudentPersonalRefId string `xml:"StudentPersonalRefId,omitempty" json:"StudentPersonalRefId"`
       StudentLocalId LocalIdType `xml:"StudentLocalId,omitempty" json:"StudentLocalId"`
       Name NameOfRecordType `xml:"Name,omitempty" json:"Name"`
       
@@ -3747,7 +3747,7 @@ type AbstractContentElementType_Reference struct {
 }
 type PersonInvolvementType_PersonRefId struct {
       SIF_RefObject string `xml:"SIF_RefObject,attr" json:"-SIF_RefObject"`
-      Value IdRefType `xml:",chardata" json:"Value"`
+      Value string `xml:",chardata" json:"Value"`
 }
 type ActivityTimeType_Duration struct {
       Units string `xml:"Units,attr" json:"-Units"`
@@ -3755,7 +3755,7 @@ type ActivityTimeType_Duration struct {
 }
 type SourceObjectsType_SourceObject struct {
       SIF_RefObject string `xml:"SIF_RefObject,attr" json:"-SIF_RefObject"`
-      Value IdRefType `xml:",chardata" json:"Value"`
+      Value string `xml:",chardata" json:"Value"`
 }
 type IdentityAssertionsType_IdentityAssertion struct {
       SchemaName string `xml:"SchemaName,attr" json:"-SchemaName"`
@@ -3763,7 +3763,7 @@ type IdentityAssertionsType_IdentityAssertion struct {
 }
 type AssociatedObjectsType_AssociatedObject struct {
       SIF_RefObject ObjectNameType `xml:"SIF_RefObject,attr" json:"-SIF_RefObject"`
-      Value IdRefType `xml:",chardata" json:"Value"`
+      Value string `xml:",chardata" json:"Value"`
 }
 type PasswordListType_Password struct {
       Algorithm string `xml:"Algorithm,attr" json:"-Algorithm"`
@@ -3772,7 +3772,7 @@ type PasswordListType_Password struct {
 }
 type LocationType_LocationRefId struct {
       SIF_RefObject string `xml:"SIF_RefObject,attr" json:"-SIF_RefObject"`
-      Value IdRefType `xml:",chardata" json:"Value"`
+      Value string `xml:",chardata" json:"Value"`
 }
 type TimeElementType_SpanGaps struct {
       SpanGap []TimeElementType_SpanGap `xml:"SpanGap,omitempty" json:"SpanGap"`

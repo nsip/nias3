@@ -14,7 +14,7 @@ package sifxml
       SubjectType string `xml:"SubjectType,omitempty" json:"SubjectType"`
       ProposedMaxClassSize string `xml:"ProposedMaxClassSize,omitempty" json:"ProposedMaxClassSize"`
       ProposedMinClassSize string `xml:"ProposedMinClassSize,omitempty" json:"ProposedMinClassSize"`
-      SchoolInfoRefId IdRefType `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
+      SchoolInfoRefId string `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
       SchoolLocalId LocalIdType `xml:"SchoolLocalId,omitempty" json:"SchoolLocalId"`
       Semester string `xml:"Semester,omitempty" json:"Semester"`
       SchoolYear SchoolYearType `xml:"SchoolYear,omitempty" json:"SchoolYear"`

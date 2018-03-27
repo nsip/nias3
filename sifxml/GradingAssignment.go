@@ -3,9 +3,9 @@ package sifxml
 
     type GradingAssignment struct {
         RefId RefIdType `xml:"RefId,attr" json:"-RefId"`
-      TeachingGroupRefId IdRefType `xml:"TeachingGroupRefId,omitempty" json:"TeachingGroupRefId"`
+      TeachingGroupRefId string `xml:"TeachingGroupRefId,omitempty" json:"TeachingGroupRefId"`
       StudentPersonalRefIdList StudentsType `xml:"StudentPersonalRefIdList,omitempty" json:"StudentPersonalRefIdList"`
-      SchoolInfoRefId IdRefType `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
+      SchoolInfoRefId string `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
       GradingCategory string `xml:"GradingCategory,omitempty" json:"GradingCategory"`
       Description string `xml:"Description,omitempty" json:"Description"`
       PointsPossible string `xml:"PointsPossible,omitempty" json:"PointsPossible"`

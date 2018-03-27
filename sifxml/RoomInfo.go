@@ -3,7 +3,7 @@ package sifxml
 
     type RoomInfo struct {
         RefId RefIdType `xml:"RefId,attr" json:"-RefId"`
-      SchoolInfoRefId IdRefType `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
+      SchoolInfoRefId string `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
       LocalId LocalIdType `xml:"LocalId,omitempty" json:"LocalId"`
       RoomNumber string `xml:"RoomNumber,omitempty" json:"RoomNumber"`
       StaffList StaffListType `xml:"StaffList,omitempty" json:"StaffList"`

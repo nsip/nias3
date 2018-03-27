@@ -19,7 +19,7 @@ package sifxml
       Copyright CopyRightContainerType `xml:"Copyright,omitempty" json:"Copyright"`
       YearLevels YearLevelsType `xml:"YearLevels,omitempty" json:"YearLevels"`
       RepositoryDate string `xml:"RepositoryDate,omitempty" json:"RepositoryDate"`
-      LearningStandardItemRefId IdRefType `xml:"LearningStandardItemRefId,omitempty" json:"LearningStandardItemRefId"`
+      LearningStandardItemRefId string `xml:"LearningStandardItemRefId,omitempty" json:"LearningStandardItemRefId"`
       RelatedLearningStandards LearningStandardsDocumentType `xml:"RelatedLearningStandards,omitempty" json:"RelatedLearningStandards"`
       SIF_Metadata SIF_MetadataType `xml:"SIF_Metadata,omitempty" json:"SIF_Metadata"`
       SIF_ExtendedElements SIF_ExtendedElementsType `xml:"SIF_ExtendedElements,omitempty" json:"SIF_ExtendedElements"`

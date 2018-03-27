@@ -2,10 +2,10 @@ package sifxml
 
 
     type CalendarDate struct {
-        CalendarDateRefId IdRefType `xml:"CalendarDateRefId,attr" json:"-CalendarDateRefId"`
+        CalendarDateRefId string `xml:"CalendarDateRefId,attr" json:"-CalendarDateRefId"`
       Date string `xml:"Date,omitempty" json:"Date"`
-      CalendarSummaryRefId IdRefType `xml:"CalendarSummaryRefId,omitempty" json:"CalendarSummaryRefId"`
-      SchoolInfoRefId IdRefType `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
+      CalendarSummaryRefId string `xml:"CalendarSummaryRefId,omitempty" json:"CalendarSummaryRefId"`
+      SchoolInfoRefId string `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
       SchoolYear SchoolYearType `xml:"SchoolYear,omitempty" json:"SchoolYear"`
       CalendarDateType CalendarDateInfoType `xml:"CalendarDateType,omitempty" json:"CalendarDateType"`
       CalendarDateNumber string `xml:"CalendarDateNumber,omitempty" json:"CalendarDateNumber"`

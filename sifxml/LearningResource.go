@@ -18,7 +18,7 @@ package sifxml
       Evaluations EvaluationsType `xml:"Evaluations,omitempty" json:"Evaluations"`
       Components ComponentsType `xml:"Components,omitempty" json:"Components"`
       LearningStandards LearningStandardsType `xml:"LearningStandards,omitempty" json:"LearningStandards"`
-      LearningResourcePackageRefId IdRefType `xml:"LearningResourcePackageRefId,omitempty" json:"LearningResourcePackageRefId"`
+      LearningResourcePackageRefId string `xml:"LearningResourcePackageRefId,omitempty" json:"LearningResourcePackageRefId"`
       SIF_Metadata SIF_MetadataType `xml:"SIF_Metadata,omitempty" json:"SIF_Metadata"`
       SIF_ExtendedElements SIF_ExtendedElementsType `xml:"SIF_ExtendedElements,omitempty" json:"SIF_ExtendedElements"`
       

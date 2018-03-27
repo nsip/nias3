@@ -16,7 +16,7 @@ package sifxml
       SourceObjects SourceObjectsType `xml:"SourceObjects,omitempty" json:"SourceObjects"`
       Points string `xml:"Points,omitempty" json:"Points"`
       ActivityTime ActivityTimeType `xml:"ActivityTime,omitempty" json:"ActivityTime"`
-      AssessmentRefId IdRefType `xml:"AssessmentRefId,omitempty" json:"AssessmentRefId"`
+      AssessmentRefId string `xml:"AssessmentRefId,omitempty" json:"AssessmentRefId"`
       MaxAttemptsAllowed string `xml:"MaxAttemptsAllowed,omitempty" json:"MaxAttemptsAllowed"`
       ActivityWeight string `xml:"ActivityWeight,omitempty" json:"ActivityWeight"`
       Evaluation Activity_Evaluation `xml:"Evaluation,omitempty" json:"Evaluation"`

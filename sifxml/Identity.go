@@ -7,12 +7,12 @@ package sifxml
       AuthenticationSource string `xml:"AuthenticationSource,omitempty" json:"AuthenticationSource"`
       IdentityAssertions IdentityAssertionsType `xml:"IdentityAssertions,omitempty" json:"IdentityAssertions"`
       PasswordList PasswordListType `xml:"PasswordList,omitempty" json:"PasswordList"`
-      AuthenticationSourceGlobalUID IdRefType `xml:"AuthenticationSourceGlobalUID,omitempty" json:"AuthenticationSourceGlobalUID"`
+      AuthenticationSourceGlobalUID string `xml:"AuthenticationSourceGlobalUID,omitempty" json:"AuthenticationSourceGlobalUID"`
       SIF_Metadata SIF_MetadataType `xml:"SIF_Metadata,omitempty" json:"SIF_Metadata"`
       SIF_ExtendedElements SIF_ExtendedElementsType `xml:"SIF_ExtendedElements,omitempty" json:"SIF_ExtendedElements"`
       
       }
     type Identity_SIF_RefId struct {
       SIF_RefObject string `xml:"SIF_RefObject,attr" json:"-SIF_RefObject"`
-      Value IdRefType `xml:",chardata" json:"Value"`
+      Value string `xml:",chardata" json:"Value"`
 }

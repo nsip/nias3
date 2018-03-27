@@ -3,10 +3,10 @@ package sifxml
 
     type SchoolCourseInfo struct {
         RefId RefIdType `xml:"RefId,attr" json:"-RefId"`
-      SchoolInfoRefId IdRefType `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
+      SchoolInfoRefId string `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
       SchoolLocalId LocalIdType `xml:"SchoolLocalId,omitempty" json:"SchoolLocalId"`
       SchoolYear SchoolYearType `xml:"SchoolYear,omitempty" json:"SchoolYear"`
-      TermInfoRefId IdRefType `xml:"TermInfoRefId,omitempty" json:"TermInfoRefId"`
+      TermInfoRefId string `xml:"TermInfoRefId,omitempty" json:"TermInfoRefId"`
       CourseCode string `xml:"CourseCode,omitempty" json:"CourseCode"`
       StateCourseCode string `xml:"StateCourseCode,omitempty" json:"StateCourseCode"`
       DistrictCourseCode string `xml:"DistrictCourseCode,omitempty" json:"DistrictCourseCode"`

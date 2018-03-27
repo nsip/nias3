@@ -3,8 +3,8 @@ package sifxml
 
     type SessionInfo struct {
         RefId RefIdType `xml:"RefId,attr" json:"-RefId"`
-      SchoolInfoRefId IdRefType `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
-      TimeTableCellRefId IdRefType `xml:"TimeTableCellRefId,omitempty" json:"TimeTableCellRefId"`
+      SchoolInfoRefId string `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
+      TimeTableCellRefId string `xml:"TimeTableCellRefId,omitempty" json:"TimeTableCellRefId"`
       SchoolYear SchoolYearType `xml:"SchoolYear,omitempty" json:"SchoolYear"`
       LocalId LocalIdType `xml:"LocalId,omitempty" json:"LocalId"`
       TimeTableSubjectLocalId LocalIdType `xml:"TimeTableSubjectLocalId,omitempty" json:"TimeTableSubjectLocalId"`

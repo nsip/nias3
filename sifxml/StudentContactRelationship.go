@@ -2,7 +2,7 @@ package sifxml
 
 
     type StudentContactRelationship struct {
-        StudentContactRelationshipRefId IdRefType `xml:"StudentContactRelationshipRefId,attr" json:"-StudentContactRelationshipRefId"`
+        StudentContactRelationshipRefId string `xml:"StudentContactRelationshipRefId,attr" json:"-StudentContactRelationshipRefId"`
       StudentPersonalRefId RefIdType `xml:"StudentPersonalRefId,omitempty" json:"StudentPersonalRefId"`
       StudentContactPersonalRefId RefIdType `xml:"StudentContactPersonalRefId,omitempty" json:"StudentContactPersonalRefId"`
       Relationship RelationshipType `xml:"Relationship,omitempty" json:"Relationship"`
@@ -12,7 +12,7 @@ package sifxml
       MainlySpeaksEnglishAtHome string `xml:"MainlySpeaksEnglishAtHome,omitempty" json:"MainlySpeaksEnglishAtHome"`
       ContactSequence string `xml:"ContactSequence,omitempty" json:"ContactSequence"`
       ContactSequenceSource string `xml:"ContactSequenceSource,omitempty" json:"ContactSequenceSource"`
-      SchoolInfoRefId IdRefType `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
+      SchoolInfoRefId string `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
       SIF_Metadata SIF_MetadataType `xml:"SIF_Metadata,omitempty" json:"SIF_Metadata"`
       SIF_ExtendedElements SIF_ExtendedElementsType `xml:"SIF_ExtendedElements,omitempty" json:"SIF_ExtendedElements"`
       

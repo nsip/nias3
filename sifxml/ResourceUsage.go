@@ -8,7 +8,7 @@ import (
 
     type ResourceUsage struct {
         RefId RefIdType `xml:"RefId,attr" json:"-RefId"`
-      SchoolInfoRefId IdRefType `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
+      SchoolInfoRefId string `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
       ResourceUsageContentType ResourceUsage_ResourceUsageContentType `xml:"ResourceUsageContentType,omitempty" json:"ResourceUsageContentType"`
       ResourceReportColumnList ResourceUsage_ResourceReportColumnList `xml:"ResourceReportColumnList,omitempty" json:"ResourceReportColumnList"`
       ResourceReportLineList ResourceUsage_ResourceReportLineList `xml:"ResourceReportLineList,omitempty" json:"ResourceReportLineList"`
@@ -78,5 +78,5 @@ type ResourceUsage_ResourceReportLine struct {
 }
 type ResourceUsage_SIF_RefId struct {
       SIF_RefObject string `xml:"SIF_RefObject,attr" json:"-SIF_RefObject"`
-      Value IdRefType `xml:",chardata" json:"Value"`
+      Value string `xml:",chardata" json:"Value"`
 }

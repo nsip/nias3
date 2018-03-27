@@ -7,8 +7,8 @@ package sifxml
       Description string `xml:"Description,omitempty" json:"Description"`
       LocalId LocalIdType `xml:"LocalId,omitempty" json:"LocalId"`
       AssetNumber LocalIdType `xml:"AssetNumber,omitempty" json:"AssetNumber"`
-      InvoiceRefId IdRefType `xml:"InvoiceRefId,omitempty" json:"InvoiceRefId"`
-      PurchaseOrderRefId IdRefType `xml:"PurchaseOrderRefId,omitempty" json:"PurchaseOrderRefId"`
+      InvoiceRefId string `xml:"InvoiceRefId,omitempty" json:"InvoiceRefId"`
+      PurchaseOrderRefId string `xml:"PurchaseOrderRefId,omitempty" json:"PurchaseOrderRefId"`
       EquipmentType string `xml:"EquipmentType,omitempty" json:"EquipmentType"`
       SIF_RefId EquipmentInfo_SIF_RefId `xml:"SIF_RefId,omitempty" json:"SIF_RefId"`
       SIF_Metadata SIF_MetadataType `xml:"SIF_Metadata,omitempty" json:"SIF_Metadata"`
@@ -17,5 +17,5 @@ package sifxml
       }
     type EquipmentInfo_SIF_RefId struct {
       SIF_RefObject string `xml:"SIF_RefObject,attr" json:"-SIF_RefObject"`
-      Value IdRefType `xml:",chardata" json:"Value"`
+      Value string `xml:",chardata" json:"Value"`
 }

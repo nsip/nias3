@@ -3,7 +3,7 @@ package sifxml
 
     type MarkValueInfo struct {
         RefId RefIdType `xml:"RefId,attr" json:"-RefId"`
-      SchoolInfoRefId IdRefType `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
+      SchoolInfoRefId string `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
       YearLevels YearLevelsType `xml:"YearLevels,omitempty" json:"YearLevels"`
       Name string `xml:"Name,omitempty" json:"Name"`
       PercentageMinimum string `xml:"PercentageMinimum,omitempty" json:"PercentageMinimum"`

@@ -9,8 +9,8 @@ package sifxml
       Description string `xml:"Description,omitempty" json:"Description"`
       LocalId LocalIdType `xml:"LocalId,omitempty" json:"LocalId"`
       StateProvinceId StateProvinceIdType `xml:"StateProvinceId,omitempty" json:"StateProvinceId"`
-      ParentChargedLocationInfoRefId IdRefType `xml:"ParentChargedLocationInfoRefId,omitempty" json:"ParentChargedLocationInfoRefId"`
-      SchoolInfoRefId IdRefType `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
+      ParentChargedLocationInfoRefId string `xml:"ParentChargedLocationInfoRefId,omitempty" json:"ParentChargedLocationInfoRefId"`
+      SchoolInfoRefId string `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
       AddressList AddressListType `xml:"AddressList,omitempty" json:"AddressList"`
       PhoneNumberList PhoneNumberListType `xml:"PhoneNumberList,omitempty" json:"PhoneNumberList"`
       SIF_Metadata SIF_MetadataType `xml:"SIF_Metadata,omitempty" json:"SIF_Metadata"`

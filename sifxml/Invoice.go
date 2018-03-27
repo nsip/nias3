@@ -9,7 +9,7 @@ package sifxml
       TransactionDescription string `xml:"TransactionDescription,omitempty" json:"TransactionDescription"`
       BilledAmount DebitOrCreditAmountType `xml:"BilledAmount,omitempty" json:"BilledAmount"`
       Ledger string `xml:"Ledger,omitempty" json:"Ledger"`
-      ChargedLocationInfoRefId IdRefType `xml:"ChargedLocationInfoRefId,omitempty" json:"ChargedLocationInfoRefId"`
+      ChargedLocationInfoRefId string `xml:"ChargedLocationInfoRefId,omitempty" json:"ChargedLocationInfoRefId"`
       NetAmount MonetaryAmountType `xml:"NetAmount,omitempty" json:"NetAmount"`
       TaxRate string `xml:"TaxRate,omitempty" json:"TaxRate"`
       TaxType string `xml:"TaxType,omitempty" json:"TaxType"`
@@ -20,7 +20,7 @@ package sifxml
       DueDate string `xml:"DueDate,omitempty" json:"DueDate"`
       FinancialAccountRefIdList FinancialAccountRefIdListType `xml:"FinancialAccountRefIdList,omitempty" json:"FinancialAccountRefIdList"`
       AccountingPeriod LocalIdType `xml:"AccountingPeriod,omitempty" json:"AccountingPeriod"`
-      RelatedPurchaseOrderRefId IdRefType `xml:"RelatedPurchaseOrderRefId,omitempty" json:"RelatedPurchaseOrderRefId"`
+      RelatedPurchaseOrderRefId string `xml:"RelatedPurchaseOrderRefId,omitempty" json:"RelatedPurchaseOrderRefId"`
       PurchasingItems PurchasingItemsType `xml:"PurchasingItems,omitempty" json:"PurchasingItems"`
       Voluntary string `xml:"Voluntary,omitempty" json:"Voluntary"`
       SIF_Metadata SIF_MetadataType `xml:"SIF_Metadata,omitempty" json:"SIF_Metadata"`
@@ -29,5 +29,5 @@ package sifxml
       }
     type Invoice_InvoicedEntity struct {
       SIF_RefObject string `xml:"SIF_RefObject,attr" json:"-SIF_RefObject"`
-      Value IdRefType `xml:",chardata" json:"Value"`
+      Value string `xml:",chardata" json:"Value"`
 }

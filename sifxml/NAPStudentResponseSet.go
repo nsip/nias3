@@ -8,9 +8,9 @@ package sifxml
       EquatingSampleFlag string `xml:"EquatingSampleFlag,omitempty" json:"EquatingSampleFlag"`
       PathTakenForDomain string `xml:"PathTakenForDomain,omitempty" json:"PathTakenForDomain"`
       ParallelTest string `xml:"ParallelTest,omitempty" json:"ParallelTest"`
-      StudentPersonalRefId IdRefType `xml:"StudentPersonalRefId,omitempty" json:"StudentPersonalRefId"`
+      StudentPersonalRefId string `xml:"StudentPersonalRefId,omitempty" json:"StudentPersonalRefId"`
       PlatformStudentIdentifier LocalIdType `xml:"PlatformStudentIdentifier,omitempty" json:"PlatformStudentIdentifier"`
-      NAPTestRefId IdRefType `xml:"NAPTestRefId,omitempty" json:"NAPTestRefId"`
+      NAPTestRefId string `xml:"NAPTestRefId,omitempty" json:"NAPTestRefId"`
       NAPTestLocalId LocalIdType `xml:"NAPTestLocalId,omitempty" json:"NAPTestLocalId"`
       DomainScore DomainScoreType `xml:"DomainScore,omitempty" json:"DomainScore"`
       TestletList NAPStudentResponseTestletListType `xml:"TestletList,omitempty" json:"TestletList"`

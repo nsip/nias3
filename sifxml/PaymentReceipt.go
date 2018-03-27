@@ -4,10 +4,10 @@ package sifxml
     type PaymentReceipt struct {
         RefId RefIdType `xml:"RefId,attr" json:"-RefId"`
       TransactionType string `xml:"TransactionType,omitempty" json:"TransactionType"`
-      InvoiceRefId IdRefType `xml:"InvoiceRefId,omitempty" json:"InvoiceRefId"`
-      VendorInfoRefId IdRefType `xml:"VendorInfoRefId,omitempty" json:"VendorInfoRefId"`
-      DebtorRefId IdRefType `xml:"DebtorRefId,omitempty" json:"DebtorRefId"`
-      ChargedLocationInfoRefId IdRefType `xml:"ChargedLocationInfoRefId,omitempty" json:"ChargedLocationInfoRefId"`
+      InvoiceRefId string `xml:"InvoiceRefId,omitempty" json:"InvoiceRefId"`
+      VendorInfoRefId string `xml:"VendorInfoRefId,omitempty" json:"VendorInfoRefId"`
+      DebtorRefId string `xml:"DebtorRefId,omitempty" json:"DebtorRefId"`
+      ChargedLocationInfoRefId string `xml:"ChargedLocationInfoRefId,omitempty" json:"ChargedLocationInfoRefId"`
       TransactionDate string `xml:"TransactionDate,omitempty" json:"TransactionDate"`
       TransactionAmount DebitOrCreditAmountType `xml:"TransactionAmount,omitempty" json:"TransactionAmount"`
       ReceivedTransactionId string `xml:"ReceivedTransactionId,omitempty" json:"ReceivedTransactionId"`

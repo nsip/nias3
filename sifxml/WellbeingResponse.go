@@ -3,8 +3,8 @@ package sifxml
 
     type WellbeingResponse struct {
         RefId RefIdType `xml:"RefId,attr" json:"-RefId"`
-      StudentPersonalRefId IdRefType `xml:"StudentPersonalRefId,omitempty" json:"StudentPersonalRefId"`
-      SchoolInfoRefId IdRefType `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
+      StudentPersonalRefId string `xml:"StudentPersonalRefId,omitempty" json:"StudentPersonalRefId"`
+      SchoolInfoRefId string `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
       Date string `xml:"Date,omitempty" json:"Date"`
       WellbeingResponseStartDate string `xml:"WellbeingResponseStartDate,omitempty" json:"WellbeingResponseStartDate"`
       WellbeingResponseEndDate string `xml:"WellbeingResponseEndDate,omitempty" json:"WellbeingResponseEndDate"`

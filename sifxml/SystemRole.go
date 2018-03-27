@@ -16,7 +16,7 @@ import (
       }
     type SystemRole_SIF_RefId struct {
       SIF_RefObject string `xml:"SIF_RefObject,attr" json:"-SIF_RefObject"`
-      Value IdRefType `xml:",chardata" json:"Value"`
+      Value string `xml:",chardata" json:"Value"`
 }
 type SystemRole_SystemContextList struct {
       SystemContext []SystemRole_SystemContext `xml:"SystemContext,omitempty" json:"SystemContext"`
@@ -98,5 +98,5 @@ type SystemRole_RoleScope struct {
 }
 type SystemRole_RoleScopeRefId struct {
       SIF_RefObject string `xml:"SIF_RefObject,attr" json:"-SIF_RefObject"`
-      Value IdRefType `xml:",chardata" json:"Value"`
+      Value string `xml:",chardata" json:"Value"`
 }

@@ -3,8 +3,8 @@ package sifxml
 
     type Journal struct {
         RefId RefIdType `xml:"RefId,attr" json:"-RefId"`
-      DebitFinancialAccountRefId IdRefType `xml:"DebitFinancialAccountRefId,omitempty" json:"DebitFinancialAccountRefId"`
-      CreditFinancialAccountRefId IdRefType `xml:"CreditFinancialAccountRefId,omitempty" json:"CreditFinancialAccountRefId"`
+      DebitFinancialAccountRefId string `xml:"DebitFinancialAccountRefId,omitempty" json:"DebitFinancialAccountRefId"`
+      CreditFinancialAccountRefId string `xml:"CreditFinancialAccountRefId,omitempty" json:"CreditFinancialAccountRefId"`
       OriginatingTransactionRefId Journal_OriginatingTransactionRefId `xml:"OriginatingTransactionRefId,omitempty" json:"OriginatingTransactionRefId"`
       Amount MonetaryAmountType `xml:"Amount,omitempty" json:"Amount"`
       GSTCodeOriginal string `xml:"GSTCodeOriginal,omitempty" json:"GSTCodeOriginal"`
@@ -20,5 +20,5 @@ package sifxml
       }
     type Journal_OriginatingTransactionRefId struct {
       SIF_RefObject string `xml:"SIF_RefObject,attr" json:"-SIF_RefObject"`
-      Value IdRefType `xml:",chardata" json:"Value"`
+      Value string `xml:",chardata" json:"Value"`
 }

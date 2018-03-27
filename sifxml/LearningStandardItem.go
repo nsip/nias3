@@ -12,7 +12,7 @@ package sifxml
       YearLevels YearLevelsType `xml:"YearLevels,omitempty" json:"YearLevels"`
       ACStrandSubjectArea ACStrandSubjectAreaType `xml:"ACStrandSubjectArea,omitempty" json:"ACStrandSubjectArea"`
       StandardIdentifier StandardIdentifierType `xml:"StandardIdentifier,omitempty" json:"StandardIdentifier"`
-      LearningStandardDocumentRefId IdRefType `xml:"LearningStandardDocumentRefId,omitempty" json:"LearningStandardDocumentRefId"`
+      LearningStandardDocumentRefId string `xml:"LearningStandardDocumentRefId,omitempty" json:"LearningStandardDocumentRefId"`
       RelatedLearningStandardItems RelatedLearningStandardItemRefIdListType `xml:"RelatedLearningStandardItems,omitempty" json:"RelatedLearningStandardItems"`
       Level4 string `xml:"Level4,omitempty" json:"Level4"`
       Level5 string `xml:"Level5,omitempty" json:"Level5"`

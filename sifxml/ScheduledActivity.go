@@ -3,16 +3,16 @@ package sifxml
 
     type ScheduledActivity struct {
         RefId RefIdType `xml:"RefId,attr" json:"-RefId"`
-      SchoolInfoRefId IdRefType `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
-      TimeTableCellRefId IdRefType `xml:"TimeTableCellRefId,omitempty" json:"TimeTableCellRefId"`
+      SchoolInfoRefId string `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
+      TimeTableCellRefId string `xml:"TimeTableCellRefId,omitempty" json:"TimeTableCellRefId"`
       DayId LocalIdType `xml:"DayId,omitempty" json:"DayId"`
       PeriodId LocalIdType `xml:"PeriodId,omitempty" json:"PeriodId"`
-      TimeTableRefId IdRefType `xml:"TimeTableRefId,omitempty" json:"TimeTableRefId"`
+      TimeTableRefId string `xml:"TimeTableRefId,omitempty" json:"TimeTableRefId"`
       ActivityDate string `xml:"ActivityDate,omitempty" json:"ActivityDate"`
       StartTime string `xml:"StartTime,omitempty" json:"StartTime"`
       FinishTime string `xml:"FinishTime,omitempty" json:"FinishTime"`
       CellType string `xml:"CellType,omitempty" json:"CellType"`
-      TimeTableSubjectRefId IdRefType `xml:"TimeTableSubjectRefId,omitempty" json:"TimeTableSubjectRefId"`
+      TimeTableSubjectRefId string `xml:"TimeTableSubjectRefId,omitempty" json:"TimeTableSubjectRefId"`
       TeacherList ScheduledTeacherListType `xml:"TeacherList,omitempty" json:"TeacherList"`
       RoomList RoomListType `xml:"RoomList,omitempty" json:"RoomList"`
       AddressList AddressListType `xml:"AddressList,omitempty" json:"AddressList"`

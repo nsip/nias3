@@ -3,7 +3,7 @@ package sifxml
 
     type TermInfo struct {
         RefId RefIdType `xml:"RefId,attr" json:"-RefId"`
-      SchoolInfoRefId IdRefType `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
+      SchoolInfoRefId string `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
       SchoolYear SchoolYearType `xml:"SchoolYear,omitempty" json:"SchoolYear"`
       StartDate string `xml:"StartDate,omitempty" json:"StartDate"`
       EndDate string `xml:"EndDate,omitempty" json:"EndDate"`

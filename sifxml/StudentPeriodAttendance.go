@@ -3,11 +3,11 @@ package sifxml
 
     type StudentPeriodAttendance struct {
         RefId RefIdType `xml:"RefId,attr" json:"-RefId"`
-      StudentPersonalRefId IdRefType `xml:"StudentPersonalRefId,omitempty" json:"StudentPersonalRefId"`
-      SchoolInfoRefId IdRefType `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
+      StudentPersonalRefId string `xml:"StudentPersonalRefId,omitempty" json:"StudentPersonalRefId"`
+      SchoolInfoRefId string `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
       Date string `xml:"Date,omitempty" json:"Date"`
-      SessionInfoRefId IdRefType `xml:"SessionInfoRefId,omitempty" json:"SessionInfoRefId"`
-      ScheduledActivityRefId IdRefType `xml:"ScheduledActivityRefId,omitempty" json:"ScheduledActivityRefId"`
+      SessionInfoRefId string `xml:"SessionInfoRefId,omitempty" json:"SessionInfoRefId"`
+      ScheduledActivityRefId string `xml:"ScheduledActivityRefId,omitempty" json:"ScheduledActivityRefId"`
       TimetablePeriod string `xml:"TimetablePeriod,omitempty" json:"TimetablePeriod"`
       TimeIn string `xml:"TimeIn,omitempty" json:"TimeIn"`
       TimeOut string `xml:"TimeOut,omitempty" json:"TimeOut"`

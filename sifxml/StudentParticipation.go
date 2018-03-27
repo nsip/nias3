@@ -3,7 +3,7 @@ package sifxml
 
     type StudentParticipation struct {
         RefId RefIdType `xml:"RefId,attr" json:"-RefId"`
-      StudentPersonalRefId IdRefType `xml:"StudentPersonalRefId,omitempty" json:"StudentPersonalRefId"`
+      StudentPersonalRefId string `xml:"StudentPersonalRefId,omitempty" json:"StudentPersonalRefId"`
       StudentParticipationAsOfDate string `xml:"StudentParticipationAsOfDate,omitempty" json:"StudentParticipationAsOfDate"`
       ProgramType string `xml:"ProgramType,omitempty" json:"ProgramType"`
       ProgramFundingSources ProgramFundingSourcesType `xml:"ProgramFundingSources,omitempty" json:"ProgramFundingSources"`
@@ -35,5 +35,5 @@ package sifxml
       }
     type StudentParticipation_ManagingSchool struct {
       SIF_RefObject string `xml:"SIF_RefObject,attr" json:"-SIF_RefObject"`
-      Value IdRefType `xml:",chardata" json:"Value"`
+      Value string `xml:",chardata" json:"Value"`
 }

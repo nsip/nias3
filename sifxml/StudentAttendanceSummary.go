@@ -2,9 +2,9 @@ package sifxml
 
 
     type StudentAttendanceSummary struct {
-        StudentAttendanceSummaryRefId IdRefType `xml:"StudentAttendanceSummaryRefId,attr" json:"-StudentAttendanceSummaryRefId"`
-      StudentPersonalRefId IdRefType `xml:"StudentPersonalRefId,omitempty" json:"StudentPersonalRefId"`
-      SchoolInfoRefId IdRefType `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
+        StudentAttendanceSummaryRefId string `xml:"StudentAttendanceSummaryRefId,attr" json:"-StudentAttendanceSummaryRefId"`
+      StudentPersonalRefId string `xml:"StudentPersonalRefId,omitempty" json:"StudentPersonalRefId"`
+      SchoolInfoRefId string `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
       SchoolYear SchoolYearType `xml:"SchoolYear,omitempty" json:"SchoolYear"`
       StartDate string `xml:"StartDate,omitempty" json:"StartDate"`
       EndDate string `xml:"EndDate,omitempty" json:"EndDate"`

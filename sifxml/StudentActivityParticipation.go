@@ -3,8 +3,8 @@ package sifxml
 
     type StudentActivityParticipation struct {
         RefId RefIdType `xml:"RefId,attr" json:"-RefId"`
-      StudentPersonalRefId IdRefType `xml:"StudentPersonalRefId,omitempty" json:"StudentPersonalRefId"`
-      StudentActivityInfoRefId IdRefType `xml:"StudentActivityInfoRefId,omitempty" json:"StudentActivityInfoRefId"`
+      StudentPersonalRefId string `xml:"StudentPersonalRefId,omitempty" json:"StudentPersonalRefId"`
+      StudentActivityInfoRefId string `xml:"StudentActivityInfoRefId,omitempty" json:"StudentActivityInfoRefId"`
       SchoolYear SchoolYearType `xml:"SchoolYear,omitempty" json:"SchoolYear"`
       ParticipationComment string `xml:"ParticipationComment,omitempty" json:"ParticipationComment"`
       StartDate string `xml:"StartDate,omitempty" json:"StartDate"`

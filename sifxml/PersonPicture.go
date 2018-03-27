@@ -13,7 +13,7 @@ package sifxml
       }
     type PersonPicture_ParentObjectRefId struct {
       SIF_RefObject string `xml:"SIF_RefObject,attr" json:"-SIF_RefObject"`
-      Value IdRefType `xml:",chardata" json:"Value"`
+      Value string `xml:",chardata" json:"Value"`
 }
 type PersonPicture_PictureSource struct {
       Type string `xml:"Type,attr" json:"-Type"`

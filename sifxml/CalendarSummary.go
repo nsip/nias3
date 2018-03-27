@@ -3,7 +3,7 @@ package sifxml
 
     type CalendarSummary struct {
         RefId RefIdType `xml:"RefId,attr" json:"-RefId"`
-      SchoolInfoRefId IdRefType `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
+      SchoolInfoRefId string `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
       SchoolYear SchoolYearType `xml:"SchoolYear,omitempty" json:"SchoolYear"`
       LocalId LocalIdType `xml:"LocalId,omitempty" json:"LocalId"`
       Description string `xml:"Description,omitempty" json:"Description"`

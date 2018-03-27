@@ -3,8 +3,8 @@ package sifxml
 
     type PersonalisedPlan struct {
         RefId RefIdType `xml:"RefId,attr" json:"-RefId"`
-      StudentPersonalRefId IdRefType `xml:"StudentPersonalRefId,omitempty" json:"StudentPersonalRefId"`
-      SchoolInfoRefId IdRefType `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
+      StudentPersonalRefId string `xml:"StudentPersonalRefId,omitempty" json:"StudentPersonalRefId"`
+      SchoolInfoRefId string `xml:"SchoolInfoRefId,omitempty" json:"SchoolInfoRefId"`
       PersonalisedPlanCategory string `xml:"PersonalisedPlanCategory,omitempty" json:"PersonalisedPlanCategory"`
       PersonalisedPlanStartDate string `xml:"PersonalisedPlanStartDate,omitempty" json:"PersonalisedPlanStartDate"`
       PersonalisedPlanEndDate string `xml:"PersonalisedPlanEndDate,omitempty" json:"PersonalisedPlanEndDate"`
