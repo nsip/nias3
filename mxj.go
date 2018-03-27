@@ -282,6 +282,31 @@ func dbTriples2XML(refid string) ([]byte, error) {
 	return Map2SIFXML(mm)
 }
 
+// Brute force stripping of empty tags and attributes from XML string.
+// Works for SIF because it does not have mixed tags and text.
+var emptytag1 = regexp.MustCompile(`(?s:\s*<[^>/]+></[^>]+>\s*)`)
+var emptytag2 = regexp.MustCompile(`(?s:\s*<[^>/]+/>\s*)`)
+var emptytag3 = regexp.MustCompile(`(?s:\s+[^>='" ]+=(''|""))`)
+
+// Optional to call; will have performance hit
+func stripEmptyTags(s []byte) []byte {
+	s = emptytag1.ReplaceAll(s, []byte(""))
+	s = emptytag1.ReplaceAll(s, []byte(""))
+	s = emptytag1.ReplaceAll(s, []byte(""))
+	s = emptytag1.ReplaceAll(s, []byte(""))
+	s = emptytag1.ReplaceAll(s, []byte(""))
+	s = emptytag2.ReplaceAll(s, []byte(""))
+	arr := strings.SplitAfter(string(s), ">")
+	for i, _ := range arr {
+		if strings.HasPrefix(arr[i], "<") {
+			// only works because we don't have mixed tags and text in SIF
+			arr[i] = emptytag3.ReplaceAllString(arr[i], "")
+		}
+	}
+	s = []byte(strings.Join(arr, ""))
+	return s
+}
+
 func main() {
 	refid, _ := storeXMLasDBtriples(staff_personal)
 	x, _ := dbTriples2XML(refid)
