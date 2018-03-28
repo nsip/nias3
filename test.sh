@@ -7,4 +7,6 @@ echo '\ncurl -X GET http://localhost:1492/sifxml/PurchaseOrders\n\n'
 curl -X GET http://localhost:1492/sifxml/PurchaseOrders
 echo '\ncurl -X GET http://localhost:1492/sifxml/StaffPersonals\n\n'
 curl -X GET http://localhost:1492/sifxml/StaffPersonals
+echo '\ncp p.xml in\n\n'
+cp p.xml 'in'
 
