@@ -259,6 +259,17 @@ func mxj2sjsonPath(p string) string {
 		mxj2sjsonPathRe2.ReplaceAllString(p, ".Value"), ".$1")
 }
 
+// no flow control yet
+func GetAllXMLByObject(object string) ([]string, error) {
+	triple_strings := datastore.GetIdentifiers(fmt.Sprintf("p:%s s:", strconv.Quote(fmt.Sprintf("%s.-RefId", object))))
+	triples := datastore.ParseTriples(triple_strings)
+	objIDs := make([]string, 0)
+	for _, t := range triples {
+		objIDs = append(objIDs, t.S)
+	}
+	return objIDs, nil
+}
+
 func DbTriples2XML(refid string) ([]byte, error) {
 	triple_strings := datastore.GetIdentifiers(fmt.Sprintf("s:%s ", strconv.Quote(fmt.Sprintf("%v", refid))))
 	triples := datastore.ParseTriples(triple_strings)
