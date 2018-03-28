@@ -1,0 +1,21 @@
+<PurchaseOrder RefId="ED12345F-DA84-9727-5BC2-8AA349DD3721">
+  <FormNumber>00342</FormNumber>
+  <VendorInfoRefId>BD12345F-DA84-9727-5BC2-8AA349DD3723</VendorInfoRefId>
+  <ChargedLocationInfoRefId>ED12345F-DA84-9727-5BC2-8AA349DD3722</ChargedLocationInfoRefId>
+  <EmployeePersonalRefId>AD12345F-DA84-9727-5BC2-8AA349DD3721</EmployeePersonalRefId>
+  <PurchasingItems>
+    <PurchasingItem>
+      <ItemNumber>154486</ItemNumber>
+      <ItemDescription>Floor Wax</ItemDescription>
+      <Quantity>10</Quantity>
+      <UnitCost Currency="AUD">7.00</UnitCost>
+      <ExpenseAccounts>
+        <ExpenseAccount>
+          <AccountCode>10-1100-610</AccountCode>
+          <Amount Currency="AUD">70.00</Amount>
+        </ExpenseAccount>
+      </ExpenseAccounts>
+    </PurchasingItem>
+  </PurchasingItems>
+</PurchaseOrder>
+
