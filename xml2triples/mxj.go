@@ -231,26 +231,24 @@ func put_triple(batch *leveldb.Batch, triple datastore.Triple) {
 	batch.Put([]byte(fmt.Sprintf("o:%s s:%s p:%s", strconv.Quote(triple.O), strconv.Quote(triple.S), strconv.Quote(triple.P))), []byte(fmt.Sprintf("s:%s p:%s o:%s", strconv.Quote(triple.S), strconv.Quote(triple.P), strconv.Quote(triple.O))))
 }
 
-func StoreXMLasDBtriples(s []byte) (string, error) {
+// nominated refid overrides any refid in the object
+func StoreXMLasDBtriples(s []byte, refid string) error {
 	db := datastore.GetDB()
 	batch := new(leveldb.Batch)
 	m, err := mxj.NewMapXml(s)
 	if err != nil {
-		return "", err
+		return err
 	}
-	refid, err := m.ValueForPath("*.-RefId")
-	if err != nil {
-		return "", err
-	}
+	m.SetValueForPath(refid, "*.-RefId")
 	for _, n := range m.LeafNodes() {
 		put_triple(batch, datastore.Triple{S: fmt.Sprintf("%v", refid), P: n.Path, O: fmt.Sprintf("%v", n.Value)})
 	}
 	batcherr := db.Write(batch, nil)
 	if batcherr != nil {
-		return "", err
+		return err
 	}
 	batch.Reset()
-	return refid.(string), nil
+	return nil
 }
 
 var mxj2sjsonPathRe1 = regexp.MustCompile(`\[(\d+)\]`)
