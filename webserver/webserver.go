@@ -14,7 +14,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	//"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -66,11 +65,34 @@ func sendXmlToDataStore(filename string) error {
 		log.Printf("Cannot read in file %s\n", filename)
 		return err
 	}
+	err = sendReaderToDataStore(file)
+	if err != nil {
+		return err
+	}
+	log.Printf("Read in file %s into filestore\n", filename)
+	return nil
+}
+
+// url: e.g. http://hits.nsip.edu.au/SIF3InfraREST/hits/requests/SchoolInfos?navigationPage=1&navigationPageSize=5&access_token=ZmZhODMzNjEtMGExOC00NDk5LTgyNjMtYjMwNjI4MGRjZDRlOmYxYzA1NjNhOWIzZTQyMGJiMDdkYTJkOTBkYjQ3OWVm&authenticationMethod=Basic
+func SIFGetToDataStore(url string) error {
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	err = sendReaderToDataStore(resp.Body)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func sendReaderToDataStore(r io.Reader) error {
 	// https://stackoverflow.com/a/40526247
 	var buffer bytes.Buffer
 	bufferOffset := int64(0)
 
-	tee := io.TeeReader(file, &buffer)
+	tee := io.TeeReader(r, &buffer)
 	decoder := xml.NewDecoder(tee)
 	for {
 		tokenStartOffset := decoder.InputOffset()
@@ -120,7 +142,6 @@ func sendXmlToDataStore(filename string) error {
 			break
 		}
 	}
-	log.Printf("Read in file %s into filestore\n", filename)
 	return nil
 }
 

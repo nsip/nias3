@@ -17,6 +17,18 @@ Functionality illustrated in `test.sh`
   * `PUT http://localhost:1492/sixml/:object/:refid`: with HTTP header `replacement` = `PARTIAL`,  or with no HTTP header `replacement`, does partial object update. The triples in the payload update the corresponding entries in the Hexastore. Nothing is deleted in the Hexastore (unless there is a nil entry in the payload): lists in the original object do not have items shrunk. (So if a list in the original object has two items, and an update is sent with one item, the first list item is updated, and the second list item is left alone.)
   * `DELETE http://localhost:1492/sifxml/:objects/:refid`: deletes SIF/XML object with RefId `:refid` from Hexastore.
 
+### SIF XML Client
+
+* The function `webserver.SIFGetToDataStore(url string) error` performs a GET on a SIF object service endpoint, fetches the result as a multiple object payload, parses it into individual objects, and adds them to the Hexastore. An example call is made at the start of the main executable:
+
+````
+webserver.SIFGetToDataStore("http://hits.nsip.edu.au/SIF3InfraREST/hits/requests/SchoolInfos?navigationPage=1&navigationPageSize=5&access_token=ZmZhODMzNjEtMGExOC00NDk5LTgyNjMtYjMwNjI4MGRjZDRlOmYxYzA1NjNhOWIzZTQyMGJiMDdkYTJkOTBkYjQ3OWVm&authenticationMethod=Basic")
+````
+
+This function fetches the first 5 records from a SchoolInfos endpoint on the [HITS Server](http://hits.nsip.edu.au), and ingests them into the Hexastore. 
+
+Performing the initial handshake to obtain authentication for the SIF endpoing (the access token in this instance) is outside the scope of this module.
+
 ### File watcher
 
 A file watcher has been implemented on folder `./in`. Any file that is created or updated in that directory (or its subdirectories), with suffix `.xml`, is parsed, and its children XML records are posted to the Hexastore.
