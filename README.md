@@ -7,7 +7,9 @@ See https://github.com/nsip/nias3/wiki/Design-specification
 
 Functionality illustrated in `test.sh`
 
-* Endpoint for SIF XML: `http://localhost:1492/sifxml`
+### SIF XML server
+
+* Endpoint for SIF XML: `http://localhost:1492/sifxml`. This is not a full implementation of the SIF infrastructure at all; it deals only with CRUD object services at a rudimentary level, with single object payloads. 
   * `POST http://localhost:1492/sifxml/:objects`: post a single SIF object. Any supplied RefID is overwritten with a local GUID. Saves the SIF/XML object as triples to the Hexastore. Returns the SIF/XML object retrieved from the Hexastore, with the local RefID. Returns error if the SIF/XML object is not of type `:object`.
   * `GET http://localhost:1492/sifxml/:objects/:refid`: retrieve SIF/XML object with RefId `:refid` from Hexastore.
   * `GET http://localhost:1492/sifxml/:object`: retrieves stream of all SIF/XML object of type `:object` from Hexastore.
@@ -15,10 +17,16 @@ Functionality illustrated in `test.sh`
   * `PUT http://localhost:1492/sixml/:object/:refid`: with HTTP header `replacement` = `PARTIAL`,  or with no HTTP header `replacement`, does partial object update. The triples in the payload update the corresponding entries in the Hexastore. Nothing is deleted in the Hexastore (unless there is a nil entry in the payload): lists in the original object do not have items shrunk. (So if a list in the original object has two items, and an update is sent with one item, the first list item is updated, and the second list item is left alone.)
   * `DELETE http://localhost:1492/sifxml/:objects/:refid`: deletes SIF/XML object with RefId `:refid` from Hexastore.
 
+### File watcher
+
 A file watcher has been implemented on folder `./in`. Any file that is created or updated in that directory (or its subdirectories), with suffix `.xml`, is parsed, and its children XML records are posted to the Hexastore.
 
 Functionality to come:
 * Update SIF/XML from file watcher
+
+
+## Functionality to come
+
 * Stream input/output into Hexastore
 * Genericise predicates in SIF/XML triples (currently position-specific for arrays)
 * Timestamp triples with Lamport clocks
