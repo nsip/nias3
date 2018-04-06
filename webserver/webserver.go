@@ -101,8 +101,7 @@ func sendXmlToDataStore(filename string) error {
 
 			// Now output everything in between!
 			bodyBytes := buffer.Next(int(tokenStartOffset - bufferOffset))
-			guid := uuid.NewV4().String()
-			if err := xml2triples.StoreXMLasDBtriples(bodyBytes, guid); err != nil {
+			if _, err := xml2triples.StoreXMLasDBtriples(bodyBytes, false); err != nil {
 				log.Println(err)
 				return err
 			}
@@ -126,10 +125,10 @@ func sendXmlToDataStore(filename string) error {
 }
 
 func full_object_replace(c echo.Context) bool {
-	// h := c.Request().(*standard.Header).Header
 	h := c.Request().Header
+	log.Printf("PUT:: %+v\n", h)
 	full := false
-	repl, ok := h["replacement"]
+	repl, ok := h["Replacement"]
 	if ok {
 		for _, h1 := range repl {
 			if h1 == "FULL" {
@@ -138,6 +137,13 @@ func full_object_replace(c echo.Context) bool {
 		}
 	}
 	return full
+}
+
+func mustUseAdvisory(c echo.Context) bool {
+	h := c.Request().Header
+	log.Printf("POST:: %+v\n", h)
+	_, ok := h["Mustuseadvisory"]
+	return ok
 }
 
 func Webserver() {
@@ -163,8 +169,8 @@ func Webserver() {
 			if string(objname[1]) != object {
 				return fmt.Errorf("%s does not match expected XML root element %s", objname[1], object)
 			}
-			guid := uuid.NewV4().String()
-			if err := xml2triples.StoreXMLasDBtriples(bodyBytes, guid); err != nil {
+			var guid string
+			if guid, err = xml2triples.StoreXMLasDBtriples(bodyBytes, mustUseAdvisory(c)); err != nil {
 				return err
 			}
 			x, err := xml2triples.DbTriples2XML(guid)
@@ -194,6 +200,7 @@ func Webserver() {
 			}
 			var err error
 			full := full_object_replace(c)
+			log.Printf("full_object_replace: %v\n", full)
 			if full {
 				if err = xml2triples.UpdateFullXMLasDBtriples(bodyBytes, refid); err != nil {
 					return err
@@ -263,6 +270,6 @@ func Webserver() {
 		return nil
 	})
 
-	fmt.Println("http://localhost:1492/sifxml is the endpoint for SIF CR[UD] queries")
+	fmt.Println("http://localhost:1492/sifxml is the endpoint for SIF CRUD queries")
 	e.Logger.Fatal(e.Start(":1492"))
 }

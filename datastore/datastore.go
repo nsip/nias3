@@ -2,15 +2,14 @@ package datastore
 
 import (
 	"fmt"
-	"log"
-	"strconv"
-	"strings"
-	"text/scanner"
-
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/filter"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/syndtr/goleveldb/leveldb/util"
+	"log"
+	"strconv"
+	"strings"
+	"text/scanner"
 )
 
 var db *leveldb.DB

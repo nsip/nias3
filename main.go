@@ -2,8 +2,8 @@ package main
 
 import (
 	"github.com/nsip/nias3/webserver"
-	"github.com/nsip/nias3/xml2triples"
-	"log"
+	//"github.com/nsip/nias3/xml2triples"
+	//"log"
 )
 
 var purchase_order = []byte(`
@@ -195,9 +195,11 @@ var staff_personal = []byte(`
 `)
 
 func main() {
-	refid := "D3E34F41-9D75-101A-8C3D-00AA001A1652"
-	xml2triples.StoreXMLasDBtriples(staff_personal, refid)
-	x, _ := xml2triples.DbTriples2XML(refid)
-	log.Printf("Map2SIFXML\n%+v\n", string(x))
+	/*
+		refid := "D3E34F41-9D75-101A-8C3D-00AA001A1652"
+		xml2triples.StoreXMLasDBtriples(staff_personal, refid)
+		x, _ := xml2triples.DbTriples2XML(refid)
+		log.Printf("Map2SIFXML\n%+v\n", string(x))
+	*/
 	webserver.Webserver()
 }

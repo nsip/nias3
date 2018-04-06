@@ -1,13 +1,21 @@
-#curl -d "@purchaseorder.xml" -X POST http://localhost:1492/sifxml/Fred
+echo '\ncurl -d "@purchaseorder.xml" -X POST http://localhost:1492/sifxml/Fred\n\n'
+curl -d "@purchaseorder.xml" -X POST http://localhost:1492/sifxml/Fred
 echo '\ncurl -d "@purchaseorder.xml" -X POST http://localhost:1492/sifxml/PurchaseOrders\n\n'
 curl -d "@purchaseorder.xml" -X POST http://localhost:1492/sifxml/PurchaseOrders
-# this object is inserted on startup
+echo '\ncurl -d "@staffpersonal.xml" -X POST http://localhost:1492/sifxml/PurchaseOrders\n\n'
+curl -d "@staffpersonal.xml" -X POST http://localhost:1492/sifxml/PurchaseOrders
+echo '\ncurl -d "@staffpersonal.xml" -X POST http://localhost:1492/sifxml/StaffPersonal\n\n'
+curl -d "@staffpersonal.xml" -X POST http://localhost:1492/sifxml/StaffPersonals
 echo '\ncurl -X GET http://localhost:1492/sifxml/StaffPersonals/D3E34F41-9D75-101A-8C3D-00AA001A1652\n\n'
 curl -X GET http://localhost:1492/sifxml/StaffPersonals/D3E34F41-9D75-101A-8C3D-00AA001A1652
+echo '\ncurl -d "@staffpersonal.xml" -H "mustUseAdvisory: true" -X POST http://localhost:1492/sifxml/StaffPersonals\n\n'
+curl -d "@staffpersonal.xml" -H "mustUseAdvisory: true" -X POST http://localhost:1492/sifxml/StaffPersonals
+echo '\ncurl -d "@staffpersonal.xml" -X POST http://localhost:1492/sifxml/StaffPersonals\n\n'
+curl -d "@staffpersonal.xml" -X POST http://localhost:1492/sifxml/StaffPersonals
 echo '\ncurl -X GET http://localhost:1492/sifxml/PurchaseOrders\n\n'
-curl -X GET http://localhost:1492/sifxml/PurchaseOrders
+#curl -X GET http://localhost:1492/sifxml/PurchaseOrders
 echo '\ncurl -X GET http://localhost:1492/sifxml/StaffPersonals\n\n'
-curl -X GET http://localhost:1492/sifxml/StaffPersonals
+#curl -X GET http://localhost:1492/sifxml/StaffPersonals
 echo '\ncurl -d "@purchaseorder.xml" -X PUT http://localhost:1492/sifxml/StaffPersonals/D3E34F41-9D75-101A-8C3D-00AA001A1652\n\n'
 curl -d "@purchaseorder.xml" -X PUT http://localhost:1492/sifxml/StaffPersonals/D3E34F41-9D75-101A-8C3D-00AA001A1652
 echo '\ncurl -d "@staffpersonal1.xml" -H "replacement: FULL" -X PUT http://localhost:1492/sifxml/StaffPersonals/D3E34F41-9D75-101A-8C3D-00AA001A1652\n\n'
