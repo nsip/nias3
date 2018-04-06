@@ -31,6 +31,7 @@ func directoryWatcher() {
 	go func() {
 		select {
 		case event := <-w.Event:
+			log.Printf("Adding XML document %s\n", event.Path)
 			sendXmlToDataStore(event.Path)
 		case err := <-w.Error:
 			log.Fatalln(err)
@@ -49,7 +50,6 @@ func directoryWatcher() {
 	}()
 }
 
-// TODO update; for now just writes records blindly
 func sendXmlToDataStore(filename string) error {
 	fi, err := os.Lstat(filename)
 	if err != nil {
@@ -237,6 +237,18 @@ func Webserver() {
 		c.Response().Header().Set("Content-Type", "application/xml")
 		c.Stream(http.StatusOK, "application/xml", pr)
 		return err
+	})
+
+	e.DELETE("/sifxml/:object/:refid", func(c echo.Context) error {
+		//object := c.Param("object")
+		refid := c.Param("refid")
+		err := xml2triples.DeleteTriplesForRefId(refid)
+		if err != nil {
+			return err
+		}
+		c.Response().Header().Set("Content-Type", "application/xml")
+		c.String(http.StatusOK, string(refid))
+		return nil
 	})
 
 	e.GET("/sifxml/:object/:refid", func(c echo.Context) error {
