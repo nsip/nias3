@@ -126,7 +126,6 @@ func sendXmlToDataStore(filename string) error {
 
 func full_object_replace(c echo.Context) bool {
 	h := c.Request().Header
-	log.Printf("PUT:: %+v\n", h)
 	full := false
 	repl, ok := h["Replacement"]
 	if ok {
@@ -141,7 +140,6 @@ func full_object_replace(c echo.Context) bool {
 
 func mustUseAdvisory(c echo.Context) bool {
 	h := c.Request().Header
-	log.Printf("POST:: %+v\n", h)
 	_, ok := h["Mustuseadvisory"]
 	return ok
 }
@@ -160,21 +158,28 @@ func Webserver() {
 		var bodyBytes []byte
 		if c.Request().Body != nil {
 			if bodyBytes, err = ioutil.ReadAll(c.Request().Body); err != nil {
+				c.String(http.StatusBadRequest, err.Error())
 				return err
 			}
 			objname := xmlobject.FindSubmatch(bodyBytes)
 			if objname == nil {
-				return fmt.Errorf("No XML root element")
+				err = fmt.Errorf("No XML root element")
+				c.String(http.StatusBadRequest, err.Error())
+				return err
 			}
 			if string(objname[1]) != object {
-				return fmt.Errorf("%s does not match expected XML root element %s", objname[1], object)
+				err = fmt.Errorf("%s does not match expected XML root element %s", objname[1], object)
+				c.String(http.StatusBadRequest, err.Error())
+				return err
 			}
 			var guid string
 			if guid, err = xml2triples.StoreXMLasDBtriples(bodyBytes, mustUseAdvisory(c)); err != nil {
+				c.String(http.StatusUnprocessableEntity, err.Error())
 				return err
 			}
 			x, err := xml2triples.DbTriples2XML(guid)
 			if err != nil {
+				c.String(http.StatusUnprocessableEntity, err.Error())
 				return err
 			}
 			c.Response().Header().Set("Content-Type", "application/xml")
@@ -189,29 +194,36 @@ func Webserver() {
 		object := strings.TrimSuffix(c.Param("object"), "s")
 		if c.Request().Body != nil {
 			if bodyBytes, err = ioutil.ReadAll(c.Request().Body); err != nil {
+				c.String(http.StatusBadRequest, err.Error())
 				return err
 			}
 			objname := xmlobject.FindSubmatch(bodyBytes)
 			if objname == nil {
-				return fmt.Errorf("No XML root element")
+				err = fmt.Errorf("No XML root element")
+				c.String(http.StatusBadRequest, err.Error())
+				return err
 			}
 			if string(objname[1]) != object {
-				return fmt.Errorf("%s does not match expected XML root element %s", objname[1], object)
+				err = fmt.Errorf("%s does not match expected XML root element %s", objname[1], object)
+				c.String(http.StatusBadRequest, err.Error())
+				return err
 			}
 			var err error
 			full := full_object_replace(c)
-			log.Printf("full_object_replace: %v\n", full)
 			if full {
 				if err = xml2triples.UpdateFullXMLasDBtriples(bodyBytes, refid); err != nil {
+					c.String(http.StatusUnprocessableEntity, err.Error())
 					return err
 				}
 			} else {
 				if err = xml2triples.UpdatePartialXMLasDBtriples(bodyBytes, refid); err != nil {
+					c.String(http.StatusUnprocessableEntity, err.Error())
 					return err
 				}
 			}
 			x, err := xml2triples.DbTriples2XML(refid)
 			if err != nil {
+				c.String(http.StatusUnprocessableEntity, err.Error())
 				return err
 			}
 			c.Response().Header().Set("Content-Type", "application/xml")
@@ -224,25 +236,29 @@ func Webserver() {
 		object := strings.TrimSuffix(c.Param("object"), "s")
 		objIDs, err := xml2triples.GetAllXMLByObject(object)
 		if err != nil {
+			c.String(http.StatusBadRequest, err.Error())
 			return err
 		}
-		//log.Printf("%+v\n", objIDs)
 		pr, pw := io.Pipe()
 		go func() {
 			for _, refid := range objIDs {
 				x, err := xml2triples.DbTriples2XML(refid)
 				if err != nil {
+					c.String(http.StatusInternalServerError, err.Error())
 					pw.CloseWithError(err)
 				}
 				_, err = pw.Write(x)
 				if err != nil {
+					c.String(http.StatusInternalServerError, err.Error())
 					pw.CloseWithError(err)
 				}
 			}
 			pw.Close()
 		}()
-		c.Response().Header().Set("Content-Type", "application/xml")
-		c.Stream(http.StatusOK, "application/xml", pr)
+		if err != nil {
+			c.Response().Header().Set("Content-Type", "application/xml")
+			c.Stream(http.StatusOK, "application/xml", pr)
+		}
 		return err
 	})
 
@@ -251,6 +267,7 @@ func Webserver() {
 		refid := c.Param("refid")
 		err := xml2triples.DeleteTriplesForRefId(refid)
 		if err != nil {
+			c.String(http.StatusBadRequest, err.Error())
 			return err
 		}
 		c.Response().Header().Set("Content-Type", "application/xml")
@@ -263,6 +280,7 @@ func Webserver() {
 		refid := c.Param("refid")
 		x, err := xml2triples.DbTriples2XML(refid)
 		if err != nil {
+			c.String(http.StatusBadRequest, err.Error())
 			return err
 		}
 		c.Response().Header().Set("Content-Type", "application/xml")
