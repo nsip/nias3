@@ -145,3 +145,27 @@ func ParseTriples(list []string) []Triple {
 	}
 	return ret
 }
+
+// first permutation is always SPO
+func PermuteTriple(triple Triple) []string {
+	ret := make([]string, 0)
+	ret = append(ret, fmt.Sprintf("s:%s p:%s o:%s", strconv.Quote(triple.S), strconv.Quote(triple.P), strconv.Quote(triple.O)))
+	ret = append(ret, fmt.Sprintf("s:%s o:%s p:%s", strconv.Quote(triple.S), strconv.Quote(triple.O), strconv.Quote(triple.P)))
+	ret = append(ret, fmt.Sprintf("p:%s s:%s o:%s", strconv.Quote(triple.P), strconv.Quote(triple.S), strconv.Quote(triple.O)))
+	ret = append(ret, fmt.Sprintf("p:%s o:%s s:%s", strconv.Quote(triple.P), strconv.Quote(triple.O), strconv.Quote(triple.S)))
+	ret = append(ret, fmt.Sprintf("o:%s p:%s s:%s", strconv.Quote(triple.O), strconv.Quote(triple.P), strconv.Quote(triple.S)))
+	ret = append(ret, fmt.Sprintf("o:%s s:%s p:%s", strconv.Quote(triple.O), strconv.Quote(triple.S), strconv.Quote(triple.P)))
+	return ret
+}
+
+func PermuteTripleKeys(list []string) []string {
+	ret := make([]string, 0)
+	triples := ParseTriples(list)
+	for _, triple := range triples {
+		keys := PermuteTriple(triple)
+		for _, key := range keys {
+			ret = append(ret, key)
+		}
+	}
+	return ret
+}

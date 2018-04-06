@@ -125,6 +125,21 @@ func sendXmlToDataStore(filename string) error {
 	return nil
 }
 
+func full_object_replace(c echo.Context) bool {
+	// h := c.Request().(*standard.Header).Header
+	h := c.Request().Header
+	full := false
+	repl, ok := h["replacement"]
+	if ok {
+		for _, h1 := range repl {
+			if h1 == "FULL" {
+				full = true
+			}
+		}
+	}
+	return full
+}
+
 func Webserver() {
 	var err error
 	e := echo.New()
@@ -133,7 +148,6 @@ func Webserver() {
 	e.Use(middleware.Recover())
 	uuid.Init()
 	directoryWatcher()
-	log.Println("AAAA")
 
 	e.POST("/sifxml/:object", func(c echo.Context) error {
 		object := strings.TrimSuffix(c.Param("object"), "s")
@@ -154,6 +168,42 @@ func Webserver() {
 				return err
 			}
 			x, err := xml2triples.DbTriples2XML(guid)
+			if err != nil {
+				return err
+			}
+			c.Response().Header().Set("Content-Type", "application/xml")
+			c.String(http.StatusOK, string(x))
+		}
+		return nil
+	})
+
+	e.PUT("/sifxml/:object/:refid", func(c echo.Context) error {
+		refid := c.Param("refid")
+		var bodyBytes []byte
+		object := strings.TrimSuffix(c.Param("object"), "s")
+		if c.Request().Body != nil {
+			if bodyBytes, err = ioutil.ReadAll(c.Request().Body); err != nil {
+				return err
+			}
+			objname := xmlobject.FindSubmatch(bodyBytes)
+			if objname == nil {
+				return fmt.Errorf("No XML root element")
+			}
+			if string(objname[1]) != object {
+				return fmt.Errorf("%s does not match expected XML root element %s", objname[1], object)
+			}
+			var err error
+			full := full_object_replace(c)
+			if full {
+				if err = xml2triples.UpdateFullXMLasDBtriples(bodyBytes, refid); err != nil {
+					return err
+				}
+			} else {
+				if err = xml2triples.UpdatePartialXMLasDBtriples(bodyBytes, refid); err != nil {
+					return err
+				}
+			}
+			x, err := xml2triples.DbTriples2XML(refid)
 			if err != nil {
 				return err
 			}

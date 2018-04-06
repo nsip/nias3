@@ -223,12 +223,96 @@ func Map2SIFXML(m mxj.Map) ([]byte, error) {
 
 func put_triple(batch *leveldb.Batch, triple datastore.Triple) {
 	log.Printf("s:%s p:%s o:%s", strconv.Quote(triple.S), strconv.Quote(triple.P), strconv.Quote(triple.O))
-	batch.Put([]byte(fmt.Sprintf("s:%s p:%s o:%s", strconv.Quote(triple.S), strconv.Quote(triple.P), strconv.Quote(triple.O))), []byte(fmt.Sprintf("s:%s p:%s o:%s", strconv.Quote(triple.S), strconv.Quote(triple.P), strconv.Quote(triple.O))))
-	batch.Put([]byte(fmt.Sprintf("s:%s o:%s p:%s", strconv.Quote(triple.S), strconv.Quote(triple.O), strconv.Quote(triple.P))), []byte(fmt.Sprintf("s:%s p:%s o:%s", strconv.Quote(triple.S), strconv.Quote(triple.P), strconv.Quote(triple.O))))
-	batch.Put([]byte(fmt.Sprintf("p:%s s:%s o:%s", strconv.Quote(triple.P), strconv.Quote(triple.S), strconv.Quote(triple.O))), []byte(fmt.Sprintf("s:%s p:%s o:%s", strconv.Quote(triple.S), strconv.Quote(triple.P), strconv.Quote(triple.O))))
-	batch.Put([]byte(fmt.Sprintf("p:%s o:%s s:%s", strconv.Quote(triple.P), strconv.Quote(triple.O), strconv.Quote(triple.S))), []byte(fmt.Sprintf("s:%s p:%s o:%s", strconv.Quote(triple.S), strconv.Quote(triple.P), strconv.Quote(triple.O))))
-	batch.Put([]byte(fmt.Sprintf("o:%s p:%s s:%s", strconv.Quote(triple.O), strconv.Quote(triple.P), strconv.Quote(triple.S))), []byte(fmt.Sprintf("s:%s p:%s o:%s", strconv.Quote(triple.S), strconv.Quote(triple.P), strconv.Quote(triple.O))))
-	batch.Put([]byte(fmt.Sprintf("o:%s s:%s p:%s", strconv.Quote(triple.O), strconv.Quote(triple.S), strconv.Quote(triple.P))), []byte(fmt.Sprintf("s:%s p:%s o:%s", strconv.Quote(triple.S), strconv.Quote(triple.P), strconv.Quote(triple.O))))
+	keys := datastore.PermuteTriple(triple)
+	for _, key := range keys {
+		batch.Put([]byte(key), []byte(keys[0]))
+	}
+	/*
+		batch.Put([]byte(fmt.Sprintf("s:%s p:%s o:%s", strconv.Quote(triple.S), strconv.Quote(triple.P), strconv.Quote(triple.O))), []byte(fmt.Sprintf("s:%s p:%s o:%s", strconv.Quote(triple.S), strconv.Quote(triple.P), strconv.Quote(triple.O))))
+		batch.Put([]byte(fmt.Sprintf("s:%s o:%s p:%s", strconv.Quote(triple.S), strconv.Quote(triple.O), strconv.Quote(triple.P))), []byte(fmt.Sprintf("s:%s p:%s o:%s", strconv.Quote(triple.S), strconv.Quote(triple.P), strconv.Quote(triple.O))))
+		batch.Put([]byte(fmt.Sprintf("p:%s s:%s o:%s", strconv.Quote(triple.P), strconv.Quote(triple.S), strconv.Quote(triple.O))), []byte(fmt.Sprintf("s:%s p:%s o:%s", strconv.Quote(triple.S), strconv.Quote(triple.P), strconv.Quote(triple.O))))
+		batch.Put([]byte(fmt.Sprintf("p:%s o:%s s:%s", strconv.Quote(triple.P), strconv.Quote(triple.O), strconv.Quote(triple.S))), []byte(fmt.Sprintf("s:%s p:%s o:%s", strconv.Quote(triple.S), strconv.Quote(triple.P), strconv.Quote(triple.O))))
+		batch.Put([]byte(fmt.Sprintf("o:%s p:%s s:%s", strconv.Quote(triple.O), strconv.Quote(triple.P), strconv.Quote(triple.S))), []byte(fmt.Sprintf("s:%s p:%s o:%s", strconv.Quote(triple.S), strconv.Quote(triple.P), strconv.Quote(triple.O))))
+		batch.Put([]byte(fmt.Sprintf("o:%s s:%s p:%s", strconv.Quote(triple.O), strconv.Quote(triple.S), strconv.Quote(triple.P))), []byte(fmt.Sprintf("s:%s p:%s o:%s", strconv.Quote(triple.S), strconv.Quote(triple.P), strconv.Quote(triple.O))))
+	*/
+}
+
+func DeleteTriplesForRefId(refid string) error {
+	db := datastore.GetDB()
+	batch := new(leveldb.Batch)
+	triple_strings := datastore.GetIdentifiers(fmt.Sprintf("s:%s ", strconv.Quote(fmt.Sprintf("%v", refid))))
+	all_keys := datastore.PermuteTripleKeys(triple_strings)
+	for _, key := range all_keys {
+		batch.Delete([]byte(key))
+	}
+	batcherr := db.Write(batch, nil)
+	if batcherr != nil {
+		return batcherr
+	}
+	batch.Reset()
+	return nil
+}
+
+func UpdateFullXMLasDBtriples(s []byte, refid string) error {
+	m, err := mxj.NewMapXml(s)
+	if err != nil {
+		return err
+	}
+	db := datastore.GetDB()
+	batch := new(leveldb.Batch)
+	/*
+		refid, err := m.ValueForPath("*.-RefId")
+		if err != nil {
+			return "", err
+		}
+	*/
+	err = DeleteTriplesForRefId(refid)
+	for _, n := range m.LeafNodes() {
+		put_triple(batch, datastore.Triple{S: fmt.Sprintf("%v", refid), P: n.Path, O: fmt.Sprintf("%v", n.Value)})
+	}
+	batcherr := db.Write(batch, nil)
+	if batcherr != nil {
+		return err
+	}
+	batch.Reset()
+	return nil
+}
+
+// does not delete anything, including extra list entries: will not shrink list of 2 to list of 1
+func UpdatePartialXMLasDBtriples(s []byte, refid string) error {
+	m, err := mxj.NewMapXml(s)
+	if err != nil {
+		return err
+	}
+	db := datastore.GetDB()
+	batch := new(leveldb.Batch)
+	/*
+		refid, err := m.ValueForPath("*.-RefId")
+		if err != nil {
+			return "", err
+		}
+	*/
+	for _, n := range m.LeafNodes() {
+		triple_strings := datastore.GetIdentifiers(fmt.Sprintf("s:%s p:%s", strconv.Quote(fmt.Sprintf("%v", refid)), strconv.Quote(fmt.Sprintf("%v", n.Path))))
+		all_keys := datastore.PermuteTripleKeys(triple_strings)
+		for _, key := range all_keys {
+			batch.Delete([]byte(key))
+		}
+	}
+	batcherr := db.Write(batch, nil)
+	if batcherr != nil {
+		return err
+	}
+	batch.Reset()
+	for _, n := range m.LeafNodes() {
+		put_triple(batch, datastore.Triple{S: fmt.Sprintf("%v", refid), P: n.Path, O: fmt.Sprintf("%v", n.Value)})
+	}
+	batcherr = db.Write(batch, nil)
+	if batcherr != nil {
+		return err
+	}
+	batch.Reset()
+	return nil
 }
 
 // nominated refid overrides any refid in the object
