@@ -1,7 +1,6 @@
 # nias3
 NIAS as peer-to-peer triple store
 
-See https://github.com/nsip/nias3/wiki/Design-specification
 
 ## NSIP Infrastructure As A Service
 
@@ -17,11 +16,15 @@ NIAS uses the following core concepts:
 * Peer-to-peer synchronisation of data between nodes, to obviate the need for server/client configuration
 
 NIAS has gone through the following implementation stages:
-* [NIAS](https://github.com/nsip/nias), implemented in Ruby with Apache Kafka data streaming, Redis as graph database, LMDS as data store. Initial proof of concept; stream chaining, filtering, format conversion, multiple standards in graph. Simple Analytics front-end.
-* [NIAS2](https://github.com/nsip/nias2), implemented in Go with NATS Streaming, Ledis as graph database and data store. Optimised for performance; intended for desktop deployment. Specific to NAPLAN use cases.
-* [NIAS3](https://github.com/nsip/nias3), implemented in Go with NATS Streaming, Ledis as Hexastore graph database. Move to triples as storage unit, peer-to-peer synchronisation of data.
+* [NIAS](https://github.com/nsip/nias) (Oct 2015), implemented in Ruby with Apache Kafka data streaming, Redis as graph database, LMDS as data store. Initial proof of concept; stream chaining, filtering, format conversion, multiple standards in graph. Simple Analytics front-end.
+* [NIAS2](https://github.com/nsip/nias2) (Jul 2016), implemented in Go with NATS Streaming, Ledis as graph database and data store. Optimised for performance; intended for desktop deployment. Specific to NAPLAN use cases.
+* [NIAS3](https://github.com/nsip/nias3) (Mar 2018), implemented in Go with NATS Streaming, Ledis as Hexastore graph database. Move to triples as storage unit, peer-to-peer synchronisation of data.
 
-## Functionality implemented to date
+## NIAS3 Functionality
+
+See https://github.com/nsip/nias3/wiki/Design-specification for the intended functionality of NIAS3.
+
+### Functionality implemented to date
 
 Functionality illustrated in `test.sh`
 
