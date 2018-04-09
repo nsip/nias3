@@ -3,6 +3,24 @@ NIAS as peer-to-peer triple store
 
 See https://github.com/nsip/nias3/wiki/Design-specification
 
+## NSIP Infrastructure As A Service
+
+NIAS (NSIP Infrastructure As A Service) is a suite of tools intended to make the interoperability infrastructure promoted by NSIP more readily available as software components, targeted in particular to desktop deployments which do not have ready access to enterprise-scale infrastructure (data hubs).
+
+NIAS uses the following core concepts:
+
+* Data streaming (as a local bus for data), feeding Microservices
+* Local validation and conversion of data
+* Graph database representation of data
+* Accommodation of multiple data standards
+* [CQRS](https://martinfowler.com/bliki/CQRS.html), to enable Eventual Concurrency
+* Peer-to-peer synchronisation of data between nodes, to obviate the need for server/client configuration
+
+NIAS has gone through the following implementation stages:
+* [NIAS](https://github.com/nsip/nias), implemented in Ruby with Apache Kafka data streaming, Redis as graph database, LMDS as data store. Initial proof of concept; stream chaining, filtering, format conversion, multiple standards in graph. Simple Analytics front-end.
+* [NIAS2](https://github.com/nsip/nias2), implemented in Go with NATS Streaming, Ledis as graph database and data store. Optimised for performance; intended for desktop deployment. Specific to NAPLAN use cases.
+* [NIAS3](https://github.com/nsip/nias3), implemented in Go with NATS Streaming, Ledis as Hexastore graph database. Move to triples as storage unit, peer-to-peer synchronisation of data.
+
 ## Functionality implemented to date
 
 Functionality illustrated in `test.sh`
