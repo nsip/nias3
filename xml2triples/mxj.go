@@ -1,24 +1,31 @@
 package xml2triples
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/clbanning/mxj"
-	"github.com/nsip/nias3/datastore"
-	"github.com/syndtr/goleveldb/leveldb"
-	"github.com/tidwall/sjson"
-	"github.com/twinj/uuid"
 	"log"
+	"net/http"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/clbanning/mxj"
+	"github.com/nsip/nias3/config"
+	"github.com/tidwall/sjson"
+	"github.com/twinj/uuid"
 )
+
+var client = &http.Client{}
+var conf = config.LoadConfig()
+var baseUrl = fmt.Sprintf("http://localhost:%d", conf.N3EngineWebport)
 
 func changeJSONTags(j string) string {
 	return strings.Replace(j, `"#text":`, `"Value":`, -1)
 }
 
-func Map2SIFXML(m mxj.Map) ([]byte, error) {
+func Map2SIFXML(m mxj.Map, stripempty bool) ([]byte, error) {
 	root, err := m.Root()
 	if err != nil {
 		return nil, err
@@ -31,99 +38,120 @@ func Map2SIFXML(m mxj.Map) ([]byte, error) {
 		return nil, err
 	}
 	// log.Println(string(j))
-	return Root2SIF(root, []byte(changeJSONTags(string(j))))
+	ret, err := Root2SIF(root, []byte(changeJSONTags(string(j))))
+	if err != nil {
+		return nil, err
+	}
+	if stripempty {
+		ret = stripEmptyTags(ret)
+	}
+	return ret, nil
 }
 
-func put_triple(batch *leveldb.Batch, triple datastore.Triple) {
-	log.Printf("s:%s p:%s o:%s", strconv.Quote(triple.S), strconv.Quote(triple.P), strconv.Quote(triple.O))
-	keys := datastore.PermuteTriple(triple)
-	for _, key := range keys {
-		batch.Put([]byte(key), []byte(keys[0]))
+// TODO POST multiple triples
+func send_triple(triple Triple) {
+	json, err := json.Marshal(triple)
+	if err != nil {
+		panic(err)
 	}
+	log.Println(string(json))
+	req, err := http.NewRequest("POST", baseUrl+"/tuple", bytes.NewBuffer(json))
+	if err != nil {
+		panic(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
 }
 
-func DeleteTriplesForRefId(refid string) error {
-	db := datastore.GetDB()
-	batch := new(leveldb.Batch)
-	triple_strings := datastore.GetIdentifiers(fmt.Sprintf("s:%s ", strconv.Quote(fmt.Sprintf("%v", refid))))
-	all_keys := datastore.PermuteTripleKeys(triple_strings)
-	for _, key := range all_keys {
-		batch.Delete([]byte(key))
+// check if key prefix is on Hexastore
+// TODO restrict query to a context
+func hasKey(keyprefix string, context string) bool {
+	req, err := http.NewRequest("GET", baseUrl+"/HasKey/"+url.PathEscape(keyprefix), nil)
+	if err != nil {
+		panic(err)
 	}
-	batcherr := db.Write(batch, nil)
-	if batcherr != nil {
-		return batcherr
+	resp, err := client.Do(req)
+	if err != nil {
+		panic(err)
 	}
-	batch.Reset()
+	return resp.StatusCode == 200
+}
+
+// retrieve tuples from Hexastore matching a key prefix (involving a subset of s: o: p:; the c: prefix
+// will be added here)
+// TODO restrict query to a context
+func getTuples(keyprefix string, context string) []Triple {
+	keyprefix1 := fmt.Sprintf("c:%s %s", strconv.Quote(context), keyprefix)
+	req, err := http.NewRequest("GET", baseUrl+"/tuple/"+url.PathEscape(keyprefix1), nil)
+	if err != nil {
+		panic(err)
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	ret := make([]Triple, 0)
+	json.NewDecoder(resp.Body).Decode(&ret)
+	return ret
+}
+
+// TODO restrict query to a context
+func DeleteTriplesForRefId(refid string, context string) error {
+	log.Println("DeleteTriplesForRefId")
+	triples := getTuples(fmt.Sprintf("s:%s ", strconv.Quote(fmt.Sprintf("%v", refid))), context)
+	log.Printf("%+v\n", triples)
+	for _, t := range triples {
+		t.Object = ""
+		send_triple(t)
+	}
 	return nil
 }
 
-func UpdateFullXMLasDBtriples(s []byte, refid string) error {
+func UpdateFullXMLasDBtriples(s []byte, refid string, context string) error {
 	m, err := mxj.NewMapXml(s)
 	if err != nil {
 		return err
 	}
-	db := datastore.GetDB()
-	batch := new(leveldb.Batch)
-	/*
-		refid, err := m.ValueForPath("*.-RefId")
-		if err != nil {
-			return "", err
-		}
-	*/
-	err = DeleteTriplesForRefId(refid)
+	err = DeleteTriplesForRefId(refid, context)
 	for _, n := range m.LeafNodes() {
-		put_triple(batch, datastore.Triple{S: fmt.Sprintf("%v", refid), P: n.Path, O: fmt.Sprintf("%v", n.Value)})
+		send_triple(Triple{Subject: fmt.Sprintf("%v", refid), Predicate: n.Path, Object: fmt.Sprintf("%v", n.Value), Context: context})
 	}
-	batcherr := db.Write(batch, nil)
-	if batcherr != nil {
-		return err
-	}
-	batch.Reset()
 	return nil
 }
 
 // does not delete anything, including extra list entries: will not shrink list of 2 to list of 1
-func UpdatePartialXMLasDBtriples(s []byte, refid string) error {
+func UpdatePartialXMLasDBtriples(s []byte, refid string, context string) error {
 	m, err := mxj.NewMapXml(s)
 	if err != nil {
 		return err
 	}
-	db := datastore.GetDB()
-	batch := new(leveldb.Batch)
-	/*
-		refid, err := m.ValueForPath("*.-RefId")
-		if err != nil {
-			return "", err
-		}
-	*/
 	for _, n := range m.LeafNodes() {
-		triple_strings := datastore.GetIdentifiers(fmt.Sprintf("s:%s p:%s", strconv.Quote(fmt.Sprintf("%v", refid)), strconv.Quote(fmt.Sprintf("%v", n.Path))))
-		all_keys := datastore.PermuteTripleKeys(triple_strings)
-		for _, key := range all_keys {
-			batch.Delete([]byte(key))
+		triples := getTuples(fmt.Sprintf("s:%s p:%s", strconv.Quote(fmt.Sprintf("%v", refid)), strconv.Quote(fmt.Sprintf("%v", n.Path))), context)
+		for _, t := range triples {
+			t.Object = ""
+			send_triple(t)
 		}
 	}
-	batcherr := db.Write(batch, nil)
-	if batcherr != nil {
-		return err
-	}
-	batch.Reset()
 	for _, n := range m.LeafNodes() {
-		put_triple(batch, datastore.Triple{S: fmt.Sprintf("%v", refid), P: n.Path, O: fmt.Sprintf("%v", n.Value)})
+		send_triple(Triple{Subject: fmt.Sprintf("%v", refid), Predicate: n.Path, Object: fmt.Sprintf("%v", n.Value), Context: context})
 	}
-	batcherr = db.Write(batch, nil)
-	if batcherr != nil {
-		return err
-	}
-	batch.Reset()
 	return nil
 }
 
+type Triple struct {
+	Subject   string
+	Object    string
+	Predicate string
+	Context   string
+}
+
 // nominated refid overrides any refid in the object
-func StoreXMLasDBtriples(s []byte, mustUseAdvisory bool) (string, error) {
-	db := datastore.GetDB()
-	batch := new(leveldb.Batch)
+func StoreXMLasDBtriples(s []byte, mustUseAdvisory bool, context string) (string, error) {
 	m, err := mxj.NewMapXml(s)
 	if err != nil {
 		return "", err
@@ -133,8 +161,7 @@ func StoreXMLasDBtriples(s []byte, mustUseAdvisory bool) (string, error) {
 	if err != nil {
 		refid = strings.ToUpper(uuid.NewV4().String())
 	} else {
-		triple_strings := datastore.GetIdentifiers(fmt.Sprintf("s:%s p:", strconv.Quote(fmt.Sprintf("%v", refid))))
-		if len(triple_strings) > 0 {
+		if hasKey(fmt.Sprintf("s:%s p:", strconv.Quote(fmt.Sprintf("%v", refid))), context) {
 			if mustUseAdvisory {
 				return "", fmt.Errorf("RefID %v already in use\n", refid.(string))
 			} else {
@@ -144,13 +171,8 @@ func StoreXMLasDBtriples(s []byte, mustUseAdvisory bool) (string, error) {
 	}
 	m.SetValueForPath(refid, "*.-RefId")
 	for _, n := range m.LeafNodes() {
-		put_triple(batch, datastore.Triple{S: fmt.Sprintf("%v", refid), P: n.Path, O: fmt.Sprintf("%v", n.Value)})
+		send_triple(Triple{Subject: fmt.Sprintf("%v", refid), Predicate: n.Path, Object: fmt.Sprintf("%v", n.Value), Context: context})
 	}
-	batcherr := db.Write(batch, nil)
-	if batcherr != nil {
-		return "", err
-	}
-	batch.Reset()
 	return refid.(string), nil
 }
 
@@ -163,25 +185,26 @@ func mxj2sjsonPath(p string) string {
 }
 
 // no flow control yet
-func GetAllXMLByObject(object string) ([]string, error) {
-	triple_strings := datastore.GetIdentifiers(fmt.Sprintf("p:%s s:", strconv.Quote(fmt.Sprintf("%s.-RefId", object))))
-	triples := datastore.ParseTriples(triple_strings)
+func GetAllXMLByObject(object string, context string) ([]string, error) {
+	triples := getTuples(fmt.Sprintf("p:%s s:", strconv.Quote(fmt.Sprintf("%s.-RefId", object))), context)
+	log.Println("%+v\n", triples)
 	objIDs := make([]string, 0)
 	for _, t := range triples {
-		objIDs = append(objIDs, t.S)
+		//objIDs = append(objIDs, t.S)
+		objIDs = append(objIDs, t.Subject)
 	}
 	return objIDs, nil
 }
 
-func DbTriples2XML(refid string) ([]byte, error) {
-	triple_strings := datastore.GetIdentifiers(fmt.Sprintf("s:%s p:", strconv.Quote(fmt.Sprintf("%v", refid))))
-	triples := datastore.ParseTriples(triple_strings)
+func DbTriples2XML(refid string, context string, stripempty bool) ([]byte, error) {
+	triples := getTuples(fmt.Sprintf("s:%s p:", strconv.Quote(fmt.Sprintf("%v", refid))), context)
+
 	json := ""
 	var err error
 	for _, t := range triples {
 		//log.Printf("%s %s %s\n", t.S, t.P, t.O)
 		//log.Printf("%s %s %s\n", t.S, mxj2sjsonPath(t.P), t.O)
-		json, err = sjson.Set(json, mxj2sjsonPath(t.P), t.O)
+		json, err = sjson.Set(json, mxj2sjsonPath(t.Predicate), t.Object)
 		if err != nil {
 			return nil, err
 		}
@@ -192,7 +215,7 @@ func DbTriples2XML(refid string) ([]byte, error) {
 		return nil, err
 	}
 	// log.Printf("%+v\n", mm)
-	return Map2SIFXML(mm)
+	return Map2SIFXML(mm, stripempty)
 }
 
 // Brute force stripping of empty tags and attributes from XML string.

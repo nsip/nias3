@@ -73,7 +73,6 @@ func sendXmlToDataStore(filename string) error {
 	return nil
 }
 
-// url: e.g. http://hits.nsip.edu.au/SIF3InfraREST/hits/requests/SchoolInfos?navigationPage=1&navigationPageSize=5&access_token=ZmZhODMzNjEtMGExOC00NDk5LTgyNjMtYjMwNjI4MGRjZDRlOmYxYzA1NjNhOWIzZTQyMGJiMDdkYTJkOTBkYjQ3OWVm&authenticationMethod=Basic
 func SIFGetToDataStore(url string) error {
 	resp, err := http.Get(url)
 	if err != nil {
@@ -81,6 +80,29 @@ func SIFGetToDataStore(url string) error {
 	}
 	defer resp.Body.Close()
 	err = sendReaderToDataStore(resp.Body)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+var firsttag = regexp.MustCompile(`^\s*<[^>]+>`)
+var lasttag = regexp.MustCompile(`<[^>]+>\s*$`)
+
+// url: e.g. http://hits.nsip.edu.au/SIF3InfraREST/hits/requests/SchoolInfos?navigationPage=1&navigationPageSize=5&access_token=ZmZhODMzNjEtMGExOC00NDk5LTgyNjMtYjMwNjI4MGRjZDRlOmYxYzA1NjNhOWIzZTQyMGJiMDdkYTJkOTBkYjQ3OWVm&authenticationMethod=Basic
+func SIFGetManyToDataStore(url string) error {
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	body = firsttag.ReplaceAll(
+		lasttag.ReplaceAll(body, []byte("")), []byte(""))
+	err = sendReaderToDataStore(bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
@@ -123,7 +145,8 @@ func sendReaderToDataStore(r io.Reader) error {
 
 			// Now output everything in between!
 			bodyBytes := buffer.Next(int(tokenStartOffset - bufferOffset))
-			if _, err := xml2triples.StoreXMLasDBtriples(bodyBytes, false); err != nil {
+			// TODO specify context
+			if _, err := xml2triples.StoreXMLasDBtriples(bodyBytes, false, "SIF"); err != nil {
 				log.Println(err)
 				return err
 			}
@@ -194,11 +217,11 @@ func Webserver() {
 				return err
 			}
 			var guid string
-			if guid, err = xml2triples.StoreXMLasDBtriples(bodyBytes, mustUseAdvisory(c)); err != nil {
+			if guid, err = xml2triples.StoreXMLasDBtriples(bodyBytes, mustUseAdvisory(c), "SIF"); err != nil {
 				c.String(http.StatusUnprocessableEntity, err.Error())
 				return err
 			}
-			x, err := xml2triples.DbTriples2XML(guid)
+			x, err := xml2triples.DbTriples2XML(guid, "SIF", true)
 			if err != nil {
 				c.String(http.StatusUnprocessableEntity, err.Error())
 				return err
@@ -232,17 +255,17 @@ func Webserver() {
 			var err error
 			full := full_object_replace(c)
 			if full {
-				if err = xml2triples.UpdateFullXMLasDBtriples(bodyBytes, refid); err != nil {
+				if err = xml2triples.UpdateFullXMLasDBtriples(bodyBytes, refid, "SIF"); err != nil {
 					c.String(http.StatusUnprocessableEntity, err.Error())
 					return err
 				}
 			} else {
-				if err = xml2triples.UpdatePartialXMLasDBtriples(bodyBytes, refid); err != nil {
+				if err = xml2triples.UpdatePartialXMLasDBtriples(bodyBytes, refid, "SIF"); err != nil {
 					c.String(http.StatusUnprocessableEntity, err.Error())
 					return err
 				}
 			}
-			x, err := xml2triples.DbTriples2XML(refid)
+			x, err := xml2triples.DbTriples2XML(refid, "SIF", true)
 			if err != nil {
 				c.String(http.StatusUnprocessableEntity, err.Error())
 				return err
@@ -255,38 +278,44 @@ func Webserver() {
 
 	e.GET("/sifxml/:object", func(c echo.Context) error {
 		object := strings.TrimSuffix(c.Param("object"), "s")
-		objIDs, err := xml2triples.GetAllXMLByObject(object)
+		objIDs, err := xml2triples.GetAllXMLByObject(object, "SIF")
 		if err != nil {
 			c.String(http.StatusBadRequest, err.Error())
 			return err
 		}
+		log.Printf("GETMANY: %+v\n", objIDs)
+		for _, refid := range objIDs {
+			_, err := xml2triples.DbTriples2XML(refid, "SIF", false)
+			if err != nil {
+				log.Println(err.Error())
+			}
+		}
 		pr, pw := io.Pipe()
 		go func() {
+			defer pw.Close()
 			for _, refid := range objIDs {
-				x, err := xml2triples.DbTriples2XML(refid)
+				x, err := xml2triples.DbTriples2XML(refid, "SIF", false)
+				log.Printf("%+v\n", err)
+				log.Println(string(x))
 				if err != nil {
+					log.Println(err.Error())
 					c.String(http.StatusInternalServerError, err.Error())
 					pw.CloseWithError(err)
-				}
-				_, err = pw.Write(x)
-				if err != nil {
-					c.String(http.StatusInternalServerError, err.Error())
-					pw.CloseWithError(err)
+					return
+				} else {
+					io.Copy(pw, bytes.NewBuffer(x))
 				}
 			}
-			pw.Close()
 		}()
-		if err != nil {
-			c.Response().Header().Set("Content-Type", "application/xml")
-			c.Stream(http.StatusOK, "application/xml", pr)
-		}
+		c.Stream(http.StatusOK, "application/xml", pr)
+		pr.Close()
 		return err
 	})
 
 	e.DELETE("/sifxml/:object/:refid", func(c echo.Context) error {
 		//object := c.Param("object")
 		refid := c.Param("refid")
-		err := xml2triples.DeleteTriplesForRefId(refid)
+		err := xml2triples.DeleteTriplesForRefId(refid, "SIF")
 		if err != nil {
 			c.String(http.StatusBadRequest, err.Error())
 			return err
@@ -299,7 +328,7 @@ func Webserver() {
 	e.GET("/sifxml/:object/:refid", func(c echo.Context) error {
 		//object := c.Param("object")
 		refid := c.Param("refid")
-		x, err := xml2triples.DbTriples2XML(refid)
+		x, err := xml2triples.DbTriples2XML(refid, "SIF", true)
 		if err != nil {
 			c.String(http.StatusBadRequest, err.Error())
 			return err
