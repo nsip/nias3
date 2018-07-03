@@ -18,7 +18,11 @@ NIAS uses the following core concepts:
 NIAS has gone through the following implementation stages:
 * [NIAS](https://github.com/nsip/nias) (Oct 2015), implemented in Ruby with Apache Kafka data streaming, Redis as graph database, LMDS as data store. Initial proof of concept; stream chaining, filtering, format conversion, multiple standards in graph. Simple Analytics front-end.
 * [NIAS2](https://github.com/nsip/nias2) (Jul 2016), implemented in Go with NATS Streaming, Ledis as graph database and data store. Optimised for performance; intended for desktop deployment. Specific to NAPLAN use cases.
-* [NIAS3](https://github.com/nsip/nias3) (Mar 2018), implemented in Go with NATS Streaming, Ledis as Hexastore graph database. Move to triples as storage unit, peer-to-peer synchronisation of data.
+* [NIAS3](https://github.com/nsip/nias3), [NIAS3-Engine](https://github.com/nsip/nias3-engine) (Mar 2018), implemented in Go with NATS Streaming, bolt db as Hexastore graph database. Move to triples as storage unit, peer-to-peer synchronisation of data, digital signing of data, encryption in transit, multiple contexts of data.
+
+## Installation
+
+There are currently two executables to be installed in NIAS3. This repository contains the API front-end to NIAS3: it is a REST server, which currently processes SIF CRUD requests, and translates between SIF/XML and triples. The bulk of functionality of NIAS3 resides in the [NIAS3-Engine](https://github.com/nsip/nias3-engine), which stores the triples in a Hexastore, synchronises triples between NIAS3-Engine instances, and adds sigchains to ensure data integrity.
 
 ## NIAS3 Functionality
 
@@ -60,10 +64,5 @@ Functionality to come:
 
 ## Functionality to come
 
-* Stream input/output into Hexastore
-* Genericise predicates in SIF/XML triples (currently position-specific for arrays)
-* Timestamp triples with Lamport clocks
+* Genericise predicates in SIF/XML triples, as a database view (currently position-specific for arrays)
 * GraphQL interface over Hexastore
-* Peer-to-peer sharing of triples between NIAS3 nodes
-* Encryption
-* Digital signatures
