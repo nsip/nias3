@@ -70,7 +70,8 @@ func send_triple(triple Triple) {
 // check if key prefix is on Hexastore
 // TODO restrict query to a context
 func hasKey(keyprefix string, context string) bool {
-	req, err := http.NewRequest("GET", baseUrl+"/HasKey/"+url.PathEscape(keyprefix), nil)
+	keyprefix1 := fmt.Sprintf("c:%s %s", strconv.Quote(context), keyprefix)
+	req, err := http.NewRequest("GET", baseUrl+"/HasKey/"+url.PathEscape(keyprefix1), nil)
 	if err != nil {
 		panic(err)
 	}
@@ -78,6 +79,7 @@ func hasKey(keyprefix string, context string) bool {
 	if err != nil {
 		panic(err)
 	}
+	log.Printf("hasKey status: %d\n", resp.StatusCode)
 	return resp.StatusCode == 200
 }
 
