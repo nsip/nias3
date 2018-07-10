@@ -31,7 +31,7 @@ func directoryWatcher() {
 		select {
 		case event := <-w.Event:
 			log.Printf("Adding XML document %s\n", event.Path)
-			sendXmlToDataStore(event.Path)
+			SendXmlToDataStore(event.Path)
 		case err := <-w.Error:
 			log.Fatalln(err)
 		case <-w.Closed:
@@ -49,7 +49,7 @@ func directoryWatcher() {
 	}()
 }
 
-func sendXmlToDataStore(filename string) error {
+func SendXmlToDataStore(filename string) error {
 	fi, err := os.Lstat(filename)
 	if err != nil {
 		return err
@@ -295,8 +295,8 @@ func Webserver() {
 			defer pw.Close()
 			for _, refid := range objIDs {
 				x, err := xml2triples.DbTriples2XML(refid, "SIF", false)
-				log.Printf("%+v\n", err)
-				log.Println(string(x))
+				//log.Printf("%+v\n", err)
+				//log.Println(string(x))
 				if err != nil {
 					log.Println(err.Error())
 					c.String(http.StatusInternalServerError, err.Error())
@@ -335,6 +335,43 @@ func Webserver() {
 		}
 		c.Response().Header().Set("Content-Type", "application/xml")
 		c.String(http.StatusOK, string(x))
+		return nil
+	})
+
+	// NSW Digital Classroom adhoc queries
+	e.GET("/sifxml/kla2student", func(c echo.Context) error {
+		var buffer bytes.Buffer
+		kla := c.QueryParam("kla")
+		yrlvl := c.QueryParam("yrlvl")
+		ids := xml2triples.Kla2student(kla, yrlvl)
+		for _, refid := range ids {
+			obj, err := xml2triples.DbTriples2XML(refid, "SIF", true)
+			if err != nil {
+				c.String(http.StatusBadRequest, err.Error())
+				return err
+			}
+			buffer.Write(obj)
+		}
+		c.Response().Header().Set("Content-Type", "application/xml")
+		c.String(http.StatusOK, buffer.String())
+		return nil
+	})
+
+	e.GET("/sifxml/kla2staff", func(c echo.Context) error {
+		var buffer bytes.Buffer
+		kla := c.QueryParam("kla")
+		yrlvl := c.QueryParam("yrlvl")
+		ids := xml2triples.Kla2staff(kla, yrlvl)
+		for _, refid := range ids {
+			obj, err := xml2triples.DbTriples2XML(refid, "SIF", true)
+			if err != nil {
+				c.String(http.StatusBadRequest, err.Error())
+				return err
+			}
+			buffer.Write(obj)
+		}
+		c.Response().Header().Set("Content-Type", "application/xml")
+		c.String(http.StatusOK, buffer.String())
 		return nil
 	})
 

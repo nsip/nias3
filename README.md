@@ -26,7 +26,7 @@ There are currently two executables to be installed in NIAS3. This repository co
 
 ## NIAS3 Functionality
 
-See https://github.com/nsip/nias3/wiki/Design-specification for the intended functionality of NIAS3.
+See https://github.com/nsip/nias3/wiki/Design-specification for the intended functionality of NIAS3, and https://github.com/nsip/nias3/wiki/Current-Design for the implementation to date.
 
 ### Functionality implemented to date
 
@@ -52,7 +52,7 @@ webserver.SIFGetToDataStore("http://hits.nsip.edu.au/SIF3InfraREST/hits/requests
 
 This function fetches the first 5 records from a SchoolInfos endpoint on the [HITS Server](http://hits.nsip.edu.au), and ingests them into the Hexastore. 
 
-Performing the initial handshake to obtain authentication for the SIF endpoing (the access token in this instance) is outside the scope of this module.
+Performing the initial handshake to obtain authentication for the SIF endpoint (the access token in this instance) is outside the scope of this module.
 
 ### File watcher
 

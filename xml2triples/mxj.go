@@ -48,14 +48,31 @@ func Map2SIFXML(m mxj.Map, stripempty bool) ([]byte, error) {
 	return ret, nil
 }
 
-// TODO POST multiple triples
 func send_triple(triple Triple) {
 	json, err := json.Marshal(triple)
 	if err != nil {
 		panic(err)
 	}
-	log.Println(string(json))
+	//log.Println(string(json))
 	req, err := http.NewRequest("POST", baseUrl+"/tuple", bytes.NewBuffer(json))
+	if err != nil {
+		panic(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+}
+
+func send_triples(triples []Triple) {
+	json, err := json.Marshal(triples)
+	if err != nil {
+		panic(err)
+	}
+	log.Println(string(json))
+	req, err := http.NewRequest("POST", baseUrl+"/tuples", bytes.NewBuffer(json))
 	if err != nil {
 		panic(err)
 	}
@@ -79,7 +96,7 @@ func hasKey(keyprefix string, context string) bool {
 	if err != nil {
 		panic(err)
 	}
-	log.Printf("hasKey status: %d\n", resp.StatusCode)
+	//log.Printf("hasKey status: %d\n", resp.StatusCode)
 	return resp.StatusCode == 200
 }
 
@@ -102,15 +119,45 @@ func getTuples(keyprefix string, context string) []Triple {
 	return ret
 }
 
+func Kla2student(kla string, yrlvl string) []string {
+	req, err := http.NewRequest("GET", baseUrl+"/kla2student?kla="+url.PathEscape(kla)+"&yrlvl="+url.PathEscape(yrlvl), nil)
+	if err != nil {
+		panic(err)
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	ret := make([]string, 0)
+	json.NewDecoder(resp.Body).Decode(&ret)
+	return ret
+}
+
+func Kla2staff(kla string, yrlvl string) []string {
+	req, err := http.NewRequest("GET", baseUrl+"/kla2staff?kla="+url.PathEscape(kla)+"&yrlvl="+url.PathEscape(yrlvl), nil)
+	if err != nil {
+		panic(err)
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	ret := make([]string, 0)
+	json.NewDecoder(resp.Body).Decode(&ret)
+	return ret
+}
+
 // TODO restrict query to a context
 func DeleteTriplesForRefId(refid string, context string) error {
-	log.Println("DeleteTriplesForRefId")
+	//log.Println("DeleteTriplesForRefId")
 	triples := getTuples(fmt.Sprintf("s:%s ", strconv.Quote(fmt.Sprintf("%v", refid))), context)
-	log.Printf("%+v\n", triples)
-	for _, t := range triples {
-		t.Object = ""
-		send_triple(t)
+	//log.Printf("%+v\n", triples)
+	for i := range triples {
+		triples[i].Object = ""
 	}
+	send_triples(triples)
 	return nil
 }
 
@@ -120,9 +167,11 @@ func UpdateFullXMLasDBtriples(s []byte, refid string, context string) error {
 		return err
 	}
 	err = DeleteTriplesForRefId(refid, context)
+	triples := make([]Triple, 0)
 	for _, n := range m.LeafNodes() {
-		send_triple(Triple{Subject: fmt.Sprintf("%v", refid), Predicate: n.Path, Object: fmt.Sprintf("%v", n.Value), Context: context})
+		triples = append(triples, Triple{Subject: fmt.Sprintf("%v", refid), Predicate: n.Path, Object: fmt.Sprintf("%v", n.Value), Context: context})
 	}
+	send_triples(triples)
 	return nil
 }
 
@@ -132,16 +181,20 @@ func UpdatePartialXMLasDBtriples(s []byte, refid string, context string) error {
 	if err != nil {
 		return err
 	}
+	all_triples := make([]Triple, 0)
 	for _, n := range m.LeafNodes() {
 		triples := getTuples(fmt.Sprintf("s:%s p:%s", strconv.Quote(fmt.Sprintf("%v", refid)), strconv.Quote(fmt.Sprintf("%v", n.Path))), context)
-		for _, t := range triples {
-			t.Object = ""
-			send_triple(t)
+		for i := range triples {
+			triples[i].Object = ""
 		}
+		all_triples = append(all_triples, triples...)
 	}
+	send_triples(all_triples)
+	all_triples = make([]Triple, 0)
 	for _, n := range m.LeafNodes() {
-		send_triple(Triple{Subject: fmt.Sprintf("%v", refid), Predicate: n.Path, Object: fmt.Sprintf("%v", n.Value), Context: context})
+		all_triples = append(all_triples, Triple{Subject: fmt.Sprintf("%v", refid), Predicate: n.Path, Object: fmt.Sprintf("%v", n.Value), Context: context})
 	}
+	send_triples(all_triples)
 	return nil
 }
 
@@ -158,7 +211,7 @@ func StoreXMLasDBtriples(s []byte, mustUseAdvisory bool, context string) (string
 	if err != nil {
 		return "", err
 	}
-	log.Printf("mustUseAdvisory %v\n", mustUseAdvisory)
+	//log.Printf("mustUseAdvisory %v\n", mustUseAdvisory)
 	refid, err := m.ValueForPath("*.-RefId")
 	if err != nil {
 		refid = strings.ToUpper(uuid.NewV4().String())
@@ -172,9 +225,11 @@ func StoreXMLasDBtriples(s []byte, mustUseAdvisory bool, context string) (string
 		}
 	}
 	m.SetValueForPath(refid, "*.-RefId")
+	triples := make([]Triple, 0)
 	for _, n := range m.LeafNodes() {
-		send_triple(Triple{Subject: fmt.Sprintf("%v", refid), Predicate: n.Path, Object: fmt.Sprintf("%v", n.Value), Context: context})
+		triples = append(triples, Triple{Subject: fmt.Sprintf("%v", refid), Predicate: n.Path, Object: fmt.Sprintf("%v", n.Value), Context: context})
 	}
+	send_triples(triples)
 	return refid.(string), nil
 }
 
@@ -189,7 +244,7 @@ func mxj2sjsonPath(p string) string {
 // no flow control yet
 func GetAllXMLByObject(object string, context string) ([]string, error) {
 	triples := getTuples(fmt.Sprintf("p:%s s:", strconv.Quote(fmt.Sprintf("%s.-RefId", object))), context)
-	log.Println("%+v\n", triples)
+	//log.Println("%+v\n", triples)
 	objIDs := make([]string, 0)
 	for _, t := range triples {
 		//objIDs = append(objIDs, t.S)

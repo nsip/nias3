@@ -199,6 +199,7 @@ func main() {
 		x, _ := xml2triples.DbTriples2XML(refid)
 		log.Printf("Map2SIFXML\n%+v\n", string(x))
 	*/
-	webserver.SIFGetManyToDataStore("http://hits.nsip.edu.au/SIF3InfraREST/hits/requests/SchoolInfos?navigationPage=1&navigationPageSize=5&access_token=ZmZhODMzNjEtMGExOC00NDk5LTgyNjMtYjMwNjI4MGRjZDRlOmYxYzA1NjNhOWIzZTQyMGJiMDdkYTJkOTBkYjQ3OWVm&authenticationMethod=Basic")
+	//webserver.SIFGetManyToDataStore("http://hits.nsip.edu.au/SIF3InfraREST/hits/requests/SchoolInfos?navigationPage=1&navigationPageSize=5&access_token=ZmZhODMzNjEtMGExOC00NDk5LTgyNjMtYjMwNjI4MGRjZDRlOmYxYzA1NjNhOWIzZTQyMGJiMDdkYTJkOTBkYjQ3OWVm&authenticationMethod=Basic")
+	//webserver.SendXmlToDataStore("nswdig.xml")
 	webserver.Webserver()
 }
