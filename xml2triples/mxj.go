@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
+	//"log"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -71,7 +71,7 @@ func send_triples(triples []Triple) {
 	if err != nil {
 		panic(err)
 	}
-	log.Println(string(json))
+	//log.Println(string(json))
 	req, err := http.NewRequest("POST", baseUrl+"/tuples", bytes.NewBuffer(json))
 	if err != nil {
 		panic(err)
