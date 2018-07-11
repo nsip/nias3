@@ -42,6 +42,17 @@ Functionality illustrated in `test.sh`
   * `PUT http://localhost:1492/sixml/:object/:refid`: with HTTP header `replacement` = `PARTIAL`,  or with no HTTP header `replacement`, does partial object update. The triples in the payload update the corresponding entries in the Hexastore. Nothing is deleted in the Hexastore (unless there is a nil entry in the payload): lists in the original object do not have items shrunk. (So if a list in the original object has two items, and an update is sent with one item, the first list item is updated, and the second list item is left alone.)
   * `DELETE http://localhost:1492/sifxml/:objects/:refid`: deletes SIF/XML object with RefId `:refid` from Hexastore.
 
+For all GET queries, the HTTP header `Accept = application/json` will return SIF/XML in JSON, in Goessner notation.
+
+### NSW Digital Classroom
+
+There are two ad hoc queries included  for the NSW Digital Classroom project:
+
+* `GET http://localhost:1492/sifxml/kla2student?kla=:keylearningarea&yrlvl=:yearlevel"`: return all students studying the given Key Learning Area in the given year level, as a join of SchoolCourseInfo, TimeTableSubject, TeachingGroup, and StudentPersonal. Presupposes that the learning area is encoded as SchoolCourseInfo/SubjectArea/Code.
+* `GET http://localhost:1492/sifxml/kla2staff?kla=:keylearningarea&yrlvl=:yearlevel"`: return all staff teaching the given Key Learning Area in the given year level, as a join of SchoolCourseInfo, TimeTableSubject, TeachingGroup, and StaffPersonal. Presupposes that the learning area is encoded as SchoolCourseInfo/SubjectArea/Code.
+
+Sample data for this query is included as `nswdig.xml`. Functionalty illustrated in `test_nsw.sh`.
+
 ### SIF XML Client
 
 * The function `webserver.SIFGetToDataStore(url string) error` performs a GET on a SIF object service endpoint, fetches the result as a multiple object payload, parses it into individual objects, and adds them to the Hexastore. An example call is made at the start of the main executable:

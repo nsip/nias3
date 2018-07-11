@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	//"log"
+	"log"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -298,4 +298,43 @@ func stripEmptyTags(s []byte) []byte {
 	}
 	s = []byte(strings.Join(arr, ""))
 	return s
+}
+
+var remove_empty_structs = regexp.MustCompile(`,"[^"]+":\{\}|,"[^"]+":\{"[^"]+":\{\}\}`)
+var remove_empty_structs1 = regexp.MustCompile(`\{"[^"]+":\{\},`)
+var attribute_rename = regexp.MustCompile(`([^\\])"-([^"\\]+)":`)
+var value_rename = regexp.MustCompile(`([^\\])"Value":`)
+
+// convert to Goessner notation
+func XMLtoJSON(x []byte) ([]byte, error) {
+	m, err := mxj.NewMapXml(x)
+	json, err := m.Json(true)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	for _, n := range m.LeafNodes() {
+		if len(n.Value.(string)) == 0 || strings.HasSuffix(n.Path, ".-xmlns") ||
+			strings.HasSuffix(n.Path, ".-xsi") || strings.HasSuffix(n.Path, ".-xsd") {
+			json, err = sjson.DeleteBytes(json, mxj2sjsonPath(n.Path))
+			if err != nil {
+				log.Println(err)
+				return nil, err
+			}
+		} else if strings.HasSuffix(n.Path, ".-nil") {
+			json, err = sjson.DeleteBytes(json, strings.TrimSuffix(mxj2sjsonPath(n.Path), ".-nil"))
+			if err != nil {
+				log.Println(err)
+				return nil, err
+			}
+		}
+	}
+	// and some brute force
+	json = remove_empty_structs.ReplaceAll(json, []byte(""))
+	json = remove_empty_structs.ReplaceAll(json, []byte(""))
+	json = remove_empty_structs.ReplaceAll(json, []byte(""))
+	json = remove_empty_structs1.ReplaceAll(json, []byte("{"))
+	json = attribute_rename.ReplaceAll(json, []byte("$1\"@$2\":"))
+	json = value_rename.ReplaceAll(json, []byte("$1\"#text\":"))
+	return json, nil
 }

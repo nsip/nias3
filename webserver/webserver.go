@@ -182,6 +182,18 @@ func full_object_replace(c echo.Context) bool {
 	return full
 }
 
+func headerJSON(c echo.Context) bool {
+	h := c.Request().Header
+	if accept, ok := h["Accept"]; ok {
+		for _, a := range accept {
+			if a == "application/json" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func mustUseAdvisory(c echo.Context) bool {
 	h := c.Request().Header
 	_, ok := h["Mustuseadvisory"]
@@ -291,6 +303,7 @@ func Webserver() {
 			}
 		}
 		pr, pw := io.Pipe()
+		json := headerJSON(c)
 		go func() {
 			defer pw.Close()
 			for _, refid := range objIDs {
@@ -303,11 +316,25 @@ func Webserver() {
 					pw.CloseWithError(err)
 					return
 				} else {
+					if json {
+						x1, err := xml2triples.XMLtoJSON(x)
+						if err != nil {
+							log.Println(err.Error())
+							c.String(http.StatusInternalServerError, err.Error())
+							pw.CloseWithError(err)
+							return
+						}
+						x = x1
+					}
 					io.Copy(pw, bytes.NewBuffer(x))
 				}
 			}
 		}()
-		c.Stream(http.StatusOK, "application/xml", pr)
+		if json {
+			c.Stream(http.StatusOK, "application/json", pr)
+		} else {
+			c.Stream(http.StatusOK, "application/xml", pr)
+		}
 		pr.Close()
 		return err
 	})
@@ -328,12 +355,24 @@ func Webserver() {
 	e.GET("/sifxml/:object/:refid", func(c echo.Context) error {
 		//object := c.Param("object")
 		refid := c.Param("refid")
+		json := headerJSON(c)
 		x, err := xml2triples.DbTriples2XML(refid, "SIF", true)
 		if err != nil {
 			c.String(http.StatusBadRequest, err.Error())
 			return err
 		}
-		c.Response().Header().Set("Content-Type", "application/xml")
+		if json {
+			x1, err := xml2triples.XMLtoJSON(x)
+			if err != nil {
+				log.Println(err.Error())
+				c.String(http.StatusInternalServerError, err.Error())
+				return err
+			}
+			x = x1
+			c.Response().Header().Set("Content-Type", "application/json")
+		} else {
+			c.Response().Header().Set("Content-Type", "application/xml")
+		}
 		c.String(http.StatusOK, string(x))
 		return nil
 	})
@@ -343,6 +382,7 @@ func Webserver() {
 		var buffer bytes.Buffer
 		kla := c.QueryParam("kla")
 		yrlvl := c.QueryParam("yrlvl")
+		json := headerJSON(c)
 		ids := xml2triples.Kla2student(kla, yrlvl)
 		for _, refid := range ids {
 			obj, err := xml2triples.DbTriples2XML(refid, "SIF", true)
@@ -350,9 +390,22 @@ func Webserver() {
 				c.String(http.StatusBadRequest, err.Error())
 				return err
 			}
+			if json {
+				x1, err := xml2triples.XMLtoJSON(obj)
+				if err != nil {
+					log.Println(err.Error())
+					c.String(http.StatusInternalServerError, err.Error())
+					return err
+				}
+				obj = x1
+			}
 			buffer.Write(obj)
 		}
-		c.Response().Header().Set("Content-Type", "application/xml")
+		if json {
+			c.Response().Header().Set("Content-Type", "application/json")
+		} else {
+			c.Response().Header().Set("Content-Type", "application/xml")
+		}
 		c.String(http.StatusOK, buffer.String())
 		return nil
 	})
@@ -361,6 +414,7 @@ func Webserver() {
 		var buffer bytes.Buffer
 		kla := c.QueryParam("kla")
 		yrlvl := c.QueryParam("yrlvl")
+		json := headerJSON(c)
 		ids := xml2triples.Kla2staff(kla, yrlvl)
 		for _, refid := range ids {
 			obj, err := xml2triples.DbTriples2XML(refid, "SIF", true)
@@ -368,9 +422,23 @@ func Webserver() {
 				c.String(http.StatusBadRequest, err.Error())
 				return err
 			}
+			if json {
+				x1, err := xml2triples.XMLtoJSON(obj)
+				if err != nil {
+					log.Println(err.Error())
+					c.String(http.StatusInternalServerError, err.Error())
+					return err
+				}
+				obj = x1
+			}
 			buffer.Write(obj)
 		}
-		c.Response().Header().Set("Content-Type", "application/xml")
+		if json {
+			c.Response().Header().Set("Content-Type", "application/json")
+		} else {
+			c.Response().Header().Set("Content-Type", "application/xml")
+		}
+
 		c.String(http.StatusOK, buffer.String())
 		return nil
 	})
