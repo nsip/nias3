@@ -306,7 +306,10 @@ func Webserver() {
 		json := headerJSON(c)
 		go func() {
 			defer pw.Close()
-			for _, refid := range objIDs {
+			if json {
+				pw.Write([]byte("["))
+			}
+			for i, refid := range objIDs {
 				x, err := xml2triples.DbTriples2XML(refid, "SIF", false)
 				//log.Printf("%+v\n", err)
 				//log.Println(string(x))
@@ -324,10 +327,16 @@ func Webserver() {
 							pw.CloseWithError(err)
 							return
 						}
+						if i > 0 {
+							pw.Write([]byte(","))
+						}
 						x = x1
 					}
 					io.Copy(pw, bytes.NewBuffer(x))
 				}
+			}
+			if json {
+				pw.Write([]byte("]"))
 			}
 		}()
 		if json {
@@ -384,13 +393,19 @@ func Webserver() {
 		yrlvl := c.QueryParam("yrlvl")
 		json := headerJSON(c)
 		ids := xml2triples.Kla2student(kla, yrlvl)
-		for _, refid := range ids {
+		if json {
+			buffer.Write([]byte("["))
+		}
+		for i, refid := range ids {
 			obj, err := xml2triples.DbTriples2XML(refid, "SIF", true)
 			if err != nil {
 				c.String(http.StatusBadRequest, err.Error())
 				return err
 			}
 			if json {
+				if i > 0 {
+					buffer.Write([]byte(","))
+				}
 				x1, err := xml2triples.XMLtoJSON(obj)
 				if err != nil {
 					log.Println(err.Error())
@@ -400,6 +415,9 @@ func Webserver() {
 				obj = x1
 			}
 			buffer.Write(obj)
+		}
+		if json {
+			buffer.Write([]byte("]"))
 		}
 		if json {
 			c.Response().Header().Set("Content-Type", "application/json")
@@ -416,13 +434,19 @@ func Webserver() {
 		yrlvl := c.QueryParam("yrlvl")
 		json := headerJSON(c)
 		ids := xml2triples.Kla2staff(kla, yrlvl)
-		for _, refid := range ids {
+		if json {
+			buffer.Write([]byte("["))
+		}
+		for i, refid := range ids {
 			obj, err := xml2triples.DbTriples2XML(refid, "SIF", true)
 			if err != nil {
 				c.String(http.StatusBadRequest, err.Error())
 				return err
 			}
 			if json {
+				if i > 0 {
+					buffer.Write([]byte(","))
+				}
 				x1, err := xml2triples.XMLtoJSON(obj)
 				if err != nil {
 					log.Println(err.Error())
@@ -432,6 +456,9 @@ func Webserver() {
 				obj = x1
 			}
 			buffer.Write(obj)
+		}
+		if json {
+			buffer.Write([]byte("]"))
 		}
 		if json {
 			c.Response().Header().Set("Content-Type", "application/json")
