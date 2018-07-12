@@ -24,6 +24,17 @@ NIAS has gone through the following implementation stages:
 
 There are currently two executables to be installed in NIAS3. This repository contains the API front-end to NIAS3: it is a REST server, which currently processes SIF CRUD requests, and translates between SIF/XML and triples. The bulk of functionality of NIAS3 resides in the [NIAS3-Engine](https://github.com/nsip/nias3-engine), which stores the triples in a Hexastore, synchronises triples between NIAS3-Engine instances, and adds sigchains to ensure data integrity.
 
+The nias3.toml file includes configuration options for the NIAS3 instance:
+
+* `N3EngineWebport` is the port on which the NIAS3 API is exposed.
+
+### Maximum open files
+
+The NIAS3 Engine needs to process a large number of open files, since it fields a large number of API requests through its webserver. If you will be running NIAS3 on Mac/Linux, you will need to increase your ulimit setting; we recommend 2048.
+
+* For Mac, see https://blog.dekstroza.io/ulimit-shenanigans-on-osx-el-capitan/
+* For Linux, `ulimit -n 2048`
+
 ## NIAS3 Functionality
 
 See https://github.com/nsip/nias3/wiki/Design-specification for the intended functionality of NIAS3, and https://github.com/nsip/nias3/wiki/Current-Design for the implementation to date.

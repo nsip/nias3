@@ -119,6 +119,7 @@ func getTuples(keyprefix string, context string) []Triple {
 	return ret
 }
 
+/* NSW DIG hard coded queries */
 func Kla2student(kla string, yrlvl string) []string {
 	req, err := http.NewRequest("GET", baseUrl+"/kla2student?kla="+url.PathEscape(kla)+"&yrlvl="+url.PathEscape(yrlvl), nil)
 	if err != nil {
@@ -136,6 +137,36 @@ func Kla2student(kla string, yrlvl string) []string {
 
 func Kla2staff(kla string, yrlvl string) []string {
 	req, err := http.NewRequest("GET", baseUrl+"/kla2staff?kla="+url.PathEscape(kla)+"&yrlvl="+url.PathEscape(yrlvl), nil)
+	if err != nil {
+		panic(err)
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	ret := make([]string, 0)
+	json.NewDecoder(resp.Body).Decode(&ret)
+	return ret
+}
+
+func Kla2teachinggroup(kla string, yrlvl string) []string {
+	req, err := http.NewRequest("GET", baseUrl+"/kla2teachinggroup?kla="+url.PathEscape(kla)+"&yrlvl="+url.PathEscape(yrlvl), nil)
+	if err != nil {
+		panic(err)
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	ret := make([]string, 0)
+	json.NewDecoder(resp.Body).Decode(&ret)
+	return ret
+}
+
+func Kla2timetablesubject(kla string, yrlvl string) []string {
+	req, err := http.NewRequest("GET", baseUrl+"/kla2timetablesubject?kla="+url.PathEscape(kla)+"&yrlvl="+url.PathEscape(yrlvl), nil)
 	if err != nil {
 		panic(err)
 	}

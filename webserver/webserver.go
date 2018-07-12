@@ -200,6 +200,41 @@ func mustUseAdvisory(c echo.Context) bool {
 	return ok
 }
 
+func ids2XMLJSON(ids []string, c echo.Context, buffer bytes.Buffer) (bytes.Buffer, error) {
+	json := headerJSON(c)
+	if json {
+		buffer.Write([]byte("["))
+	}
+	for i, refid := range ids {
+		obj, err := xml2triples.DbTriples2XML(refid, "SIF", true)
+		if err != nil {
+			log.Println(err)
+			return buffer, err
+		}
+		if json {
+			if i > 0 {
+				buffer.Write([]byte(","))
+			}
+			x1, err := xml2triples.XMLtoJSON(obj)
+			if err != nil {
+				log.Println(err)
+				return buffer, err
+			}
+			obj = x1
+		}
+		buffer.Write(obj)
+	}
+	if json {
+		buffer.Write([]byte("]"))
+	}
+	if json {
+		c.Response().Header().Set("Content-Type", "application/json")
+	} else {
+		c.Response().Header().Set("Content-Type", "application/xml")
+	}
+	return buffer, nil
+}
+
 func Webserver() {
 	var err error
 	e := echo.New()
@@ -295,7 +330,7 @@ func Webserver() {
 			c.String(http.StatusBadRequest, err.Error())
 			return err
 		}
-		log.Printf("GETMANY: %+v\n", objIDs)
+		//log.Printf("GETMANY: %+v\n", objIDs)
 		for _, refid := range objIDs {
 			_, err := xml2triples.DbTriples2XML(refid, "SIF", false)
 			if err != nil {
@@ -391,38 +426,12 @@ func Webserver() {
 		var buffer bytes.Buffer
 		kla := c.QueryParam("kla")
 		yrlvl := c.QueryParam("yrlvl")
-		json := headerJSON(c)
 		ids := xml2triples.Kla2student(kla, yrlvl)
-		if json {
-			buffer.Write([]byte("["))
-		}
-		for i, refid := range ids {
-			obj, err := xml2triples.DbTriples2XML(refid, "SIF", true)
-			if err != nil {
-				c.String(http.StatusBadRequest, err.Error())
-				return err
-			}
-			if json {
-				if i > 0 {
-					buffer.Write([]byte(","))
-				}
-				x1, err := xml2triples.XMLtoJSON(obj)
-				if err != nil {
-					log.Println(err.Error())
-					c.String(http.StatusInternalServerError, err.Error())
-					return err
-				}
-				obj = x1
-			}
-			buffer.Write(obj)
-		}
-		if json {
-			buffer.Write([]byte("]"))
-		}
-		if json {
-			c.Response().Header().Set("Content-Type", "application/json")
-		} else {
-			c.Response().Header().Set("Content-Type", "application/xml")
+		buffer, err := ids2XMLJSON(ids, c, buffer)
+		if err != nil {
+			log.Println(err.Error())
+			c.String(http.StatusBadRequest, err.Error())
+			return err
 		}
 		c.String(http.StatusOK, buffer.String())
 		return nil
@@ -432,40 +441,43 @@ func Webserver() {
 		var buffer bytes.Buffer
 		kla := c.QueryParam("kla")
 		yrlvl := c.QueryParam("yrlvl")
-		json := headerJSON(c)
 		ids := xml2triples.Kla2staff(kla, yrlvl)
-		if json {
-			buffer.Write([]byte("["))
+		buffer, err := ids2XMLJSON(ids, c, buffer)
+		if err != nil {
+			log.Println(err.Error())
+			c.String(http.StatusBadRequest, err.Error())
+			return err
 		}
-		for i, refid := range ids {
-			obj, err := xml2triples.DbTriples2XML(refid, "SIF", true)
-			if err != nil {
-				c.String(http.StatusBadRequest, err.Error())
-				return err
-			}
-			if json {
-				if i > 0 {
-					buffer.Write([]byte(","))
-				}
-				x1, err := xml2triples.XMLtoJSON(obj)
-				if err != nil {
-					log.Println(err.Error())
-					c.String(http.StatusInternalServerError, err.Error())
-					return err
-				}
-				obj = x1
-			}
-			buffer.Write(obj)
-		}
-		if json {
-			buffer.Write([]byte("]"))
-		}
-		if json {
-			c.Response().Header().Set("Content-Type", "application/json")
-		} else {
-			c.Response().Header().Set("Content-Type", "application/xml")
-		}
+		c.String(http.StatusOK, buffer.String())
+		return nil
+	})
 
+	e.GET("/sifxml/kla2teachinggroup", func(c echo.Context) error {
+		var buffer bytes.Buffer
+		kla := c.QueryParam("kla")
+		yrlvl := c.QueryParam("yrlvl")
+		ids := xml2triples.Kla2teachinggroup(kla, yrlvl)
+		buffer, err := ids2XMLJSON(ids, c, buffer)
+		if err != nil {
+			log.Println(err.Error())
+			c.String(http.StatusBadRequest, err.Error())
+			return err
+		}
+		c.String(http.StatusOK, buffer.String())
+		return nil
+	})
+
+	e.GET("/sifxml/kla2timetablesubject", func(c echo.Context) error {
+		var buffer bytes.Buffer
+		kla := c.QueryParam("kla")
+		yrlvl := c.QueryParam("yrlvl")
+		ids := xml2triples.Kla2timetablesubject(kla, yrlvl)
+		buffer, err := ids2XMLJSON(ids, c, buffer)
+		if err != nil {
+			log.Println(err.Error())
+			c.String(http.StatusBadRequest, err.Error())
+			return err
+		}
 		c.String(http.StatusOK, buffer.String())
 		return nil
 	})
