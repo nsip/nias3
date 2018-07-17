@@ -66,7 +66,7 @@ func send_triple(triple Triple) {
 	defer resp.Body.Close()
 }
 
-func send_triples(triples []Triple) {
+func Send_triples(triples []*Triple) {
 	json, err := json.Marshal(triples)
 	if err != nil {
 		panic(err)
@@ -103,7 +103,7 @@ func hasKey(keyprefix string, context string) bool {
 // retrieve tuples from Hexastore matching a key prefix (involving a subset of s: o: p:; the c: prefix
 // will be added here)
 // TODO restrict query to a context
-func getTuples(keyprefix string, context string) []Triple {
+func getTuples(keyprefix string, context string) []*Triple {
 	keyprefix1 := fmt.Sprintf("c:%s %s", strconv.Quote(context), keyprefix)
 	req, err := http.NewRequest("GET", baseUrl+"/tuple/"+url.PathEscape(keyprefix1), nil)
 	if err != nil {
@@ -114,7 +114,7 @@ func getTuples(keyprefix string, context string) []Triple {
 		panic(err)
 	}
 	defer resp.Body.Close()
-	ret := make([]Triple, 0)
+	ret := make([]*Triple, 0)
 	json.NewDecoder(resp.Body).Decode(&ret)
 	return ret
 }
@@ -188,7 +188,7 @@ func DeleteTriplesForRefId(refid string, context string) error {
 	for i := range triples {
 		triples[i].Object = ""
 	}
-	send_triples(triples)
+	Send_triples(triples)
 	return nil
 }
 
@@ -198,11 +198,11 @@ func UpdateFullXMLasDBtriples(s []byte, refid string, context string) error {
 		return err
 	}
 	err = DeleteTriplesForRefId(refid, context)
-	triples := make([]Triple, 0)
+	triples := make([]*Triple, 0)
 	for _, n := range m.LeafNodes() {
-		triples = append(triples, Triple{Subject: fmt.Sprintf("%v", refid), Predicate: n.Path, Object: fmt.Sprintf("%v", n.Value), Context: context})
+		triples = append(triples, &Triple{Subject: fmt.Sprintf("%v", refid), Predicate: n.Path, Object: fmt.Sprintf("%v", n.Value), Context: context})
 	}
-	send_triples(triples)
+	Send_triples(triples)
 	return nil
 }
 
@@ -212,7 +212,7 @@ func UpdatePartialXMLasDBtriples(s []byte, refid string, context string) error {
 	if err != nil {
 		return err
 	}
-	all_triples := make([]Triple, 0)
+	all_triples := make([]*Triple, 0)
 	for _, n := range m.LeafNodes() {
 		triples := getTuples(fmt.Sprintf("s:%s p:%s", strconv.Quote(fmt.Sprintf("%v", refid)), strconv.Quote(fmt.Sprintf("%v", n.Path))), context)
 		for i := range triples {
@@ -220,12 +220,12 @@ func UpdatePartialXMLasDBtriples(s []byte, refid string, context string) error {
 		}
 		all_triples = append(all_triples, triples...)
 	}
-	send_triples(all_triples)
-	all_triples = make([]Triple, 0)
+	Send_triples(all_triples)
+	all_triples = make([]*Triple, 0)
 	for _, n := range m.LeafNodes() {
-		all_triples = append(all_triples, Triple{Subject: fmt.Sprintf("%v", refid), Predicate: n.Path, Object: fmt.Sprintf("%v", n.Value), Context: context})
+		all_triples = append(all_triples, &Triple{Subject: fmt.Sprintf("%v", refid), Predicate: n.Path, Object: fmt.Sprintf("%v", n.Value), Context: context})
 	}
-	send_triples(all_triples)
+	Send_triples(all_triples)
 	return nil
 }
 
@@ -237,31 +237,29 @@ type Triple struct {
 }
 
 // nominated refid overrides any refid in the object
-func StoreXMLasDBtriples(s []byte, mustUseAdvisory bool, context string) (string, error) {
+func StoreXMLasDBtriples(s []byte, mustUseAdvisory bool, context string) (string, []*Triple, error) {
 	m, err := mxj.NewMapXml(s)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	//log.Printf("mustUseAdvisory %v\n", mustUseAdvisory)
 	refid, err := m.ValueForPath("*.-RefId")
 	if err != nil {
 		refid = strings.ToUpper(uuid.NewV4().String())
 	} else {
-		if hasKey(fmt.Sprintf("s:%s p:", strconv.Quote(fmt.Sprintf("%v", refid))), context) {
-			if mustUseAdvisory {
-				return "", fmt.Errorf("RefID %v already in use\n", refid.(string))
-			} else {
-				refid = strings.ToUpper(uuid.NewV4().String())
-			}
+		if mustUseAdvisory && hasKey(fmt.Sprintf("s:%s p:", strconv.Quote(fmt.Sprintf("%v", refid))), context) {
+			return "", nil, fmt.Errorf("RefID %v already in use\n", refid.(string))
+		} else {
+			refid = strings.ToUpper(uuid.NewV4().String())
 		}
 	}
 	m.SetValueForPath(refid, "*.-RefId")
-	triples := make([]Triple, 0)
+	triples := make([]*Triple, 0)
 	for _, n := range m.LeafNodes() {
-		triples = append(triples, Triple{Subject: fmt.Sprintf("%v", refid), Predicate: n.Path, Object: fmt.Sprintf("%v", n.Value), Context: context})
+		triples = append(triples, &Triple{Subject: fmt.Sprintf("%v", refid), Predicate: n.Path, Object: fmt.Sprintf("%v", n.Value), Context: context})
 	}
-	send_triples(triples)
-	return refid.(string), nil
+	//Send_triples(triples)
+	return refid.(string), triples, nil
 }
 
 var mxj2sjsonPathRe1 = regexp.MustCompile(`\[(\d+)\]`)

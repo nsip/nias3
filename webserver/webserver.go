@@ -109,6 +109,7 @@ func SIFGetManyToDataStore(url string) error {
 	return nil
 }
 
+// does not ignore any suggested RefIds for objects: the refids in a static file will be cross-referenced
 func sendReaderToDataStore(r io.Reader) error {
 	// https://stackoverflow.com/a/40526247
 	var buffer bytes.Buffer
@@ -116,6 +117,8 @@ func sendReaderToDataStore(r io.Reader) error {
 
 	tee := io.TeeReader(r, &buffer)
 	decoder := xml.NewDecoder(tee)
+	alltriples := make([]*xml2triples.Triple, 0)
+	var triples []*xml2triples.Triple
 	for {
 		tokenStartOffset := decoder.InputOffset()
 		el, err := decoder.Token()
@@ -146,9 +149,14 @@ func sendReaderToDataStore(r io.Reader) error {
 			// Now output everything in between!
 			bodyBytes := buffer.Next(int(tokenStartOffset - bufferOffset))
 			// TODO specify context
-			if _, err := xml2triples.StoreXMLasDBtriples(bodyBytes, false, "SIF"); err != nil {
+			if _, triples, err = xml2triples.StoreXMLasDBtriples(bodyBytes, true, "SIF"); err != nil {
 				log.Println(err)
 				return err
+			}
+			alltriples = append(alltriples, triples...)
+			if len(alltriples) > 1000 {
+				xml2triples.Send_triples(alltriples)
+				alltriples = make([]*xml2triples.Triple, 0)
 			}
 
 			// And now the buffer's up to date.
@@ -165,6 +173,7 @@ func sendReaderToDataStore(r io.Reader) error {
 			break
 		}
 	}
+	xml2triples.Send_triples(alltriples)
 	return nil
 }
 
@@ -235,6 +244,12 @@ func ids2XMLJSON(ids []string, c echo.Context, buffer bytes.Buffer) (bytes.Buffe
 	return buffer, nil
 }
 
+// currently uses the simplistic mechanism of determining whether this is a CREATE ONE or
+// CREATE MANY request based on whether the object name is suffixed by an -s
+func requestMany(objectname string) bool {
+	return strings.HasSuffix(objectname, "s")
+}
+
 func Webserver() {
 	var err error
 	e := echo.New()
@@ -245,36 +260,44 @@ func Webserver() {
 	directoryWatcher()
 
 	e.POST("/sifxml/:object", func(c echo.Context) error {
-		object := strings.TrimSuffix(c.Param("object"), "s")
-		var bodyBytes []byte
-		if c.Request().Body != nil {
-			if bodyBytes, err = ioutil.ReadAll(c.Request().Body); err != nil {
-				c.String(http.StatusBadRequest, err.Error())
-				return err
+		if requestMany(c.Param("object")) {
+			err = fmt.Errorf("Multiple object payloads not yet implemented")
+			c.String(http.StatusBadRequest, err.Error())
+			return err
+		} else {
+			object := strings.TrimSuffix(c.Param("object"), "s")
+			var bodyBytes []byte
+			if c.Request().Body != nil {
+				if bodyBytes, err = ioutil.ReadAll(c.Request().Body); err != nil {
+					c.String(http.StatusBadRequest, err.Error())
+					return err
+				}
+				objname := xmlobject.FindSubmatch(bodyBytes)
+				if objname == nil {
+					err = fmt.Errorf("No XML root element")
+					c.String(http.StatusBadRequest, err.Error())
+					return err
+				}
+				if string(objname[1]) != object {
+					err = fmt.Errorf("%s does not match expected XML root element %s", objname[1], object)
+					c.String(http.StatusBadRequest, err.Error())
+					return err
+				}
+				var guid string
+				var triples []*xml2triples.Triple
+				if guid, triples, err = xml2triples.StoreXMLasDBtriples(bodyBytes, mustUseAdvisory(c), "SIF"); err != nil {
+					c.String(http.StatusUnprocessableEntity, err.Error())
+					return err
+				}
+				xml2triples.Send_triples(triples)
+				x, err := xml2triples.DbTriples2XML(guid, "SIF", true)
+				if err != nil {
+					c.String(http.StatusUnprocessableEntity, err.Error())
+					return err
+				}
+				c.Response().Header().Set("Content-Type", "application/xml")
+				c.String(http.StatusOK, string(x))
 			}
-			objname := xmlobject.FindSubmatch(bodyBytes)
-			if objname == nil {
-				err = fmt.Errorf("No XML root element")
-				c.String(http.StatusBadRequest, err.Error())
-				return err
-			}
-			if string(objname[1]) != object {
-				err = fmt.Errorf("%s does not match expected XML root element %s", objname[1], object)
-				c.String(http.StatusBadRequest, err.Error())
-				return err
-			}
-			var guid string
-			if guid, err = xml2triples.StoreXMLasDBtriples(bodyBytes, mustUseAdvisory(c), "SIF"); err != nil {
-				c.String(http.StatusUnprocessableEntity, err.Error())
-				return err
-			}
-			x, err := xml2triples.DbTriples2XML(guid, "SIF", true)
-			if err != nil {
-				c.String(http.StatusUnprocessableEntity, err.Error())
-				return err
-			}
-			c.Response().Header().Set("Content-Type", "application/xml")
-			c.String(http.StatusOK, string(x))
 		}
 		return nil
 	})
