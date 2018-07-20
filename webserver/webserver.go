@@ -16,6 +16,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	//"sync"
 	"time"
 )
 
@@ -109,16 +110,67 @@ func SIFGetManyToDataStore(url string) error {
 	return nil
 }
 
+func simultSendTriples(alltriples []*xml2triples.Triple, ch chan<- struct{}, limitch <-chan struct{}) {
+	<-limitch // buffered channel, to throttle simult connections to http
+	tmp := make([]*xml2triples.Triple, len(alltriples))
+	copy(tmp, alltriples)
+	xml2triples.Send_triples(tmp)
+	ch <- struct{}{} // to sync all triples batches sent
+}
+
+func sendTriplesAsync(triplech <-chan *xml2triples.Triple, done chan<- struct{}) {
+	limitch := make(chan struct{}, HTTPTHREADS) // throttle simultaneous http posts to 20
+	ch := make(chan struct{})
+	batchcount := 0
+
+	triples := make([]*xml2triples.Triple, 0)
+	i := 0
+	for t := range triplech {
+		i++
+		triples = append(triples, t)
+		if i == 1000 {
+			batchcount++
+			limitch <- struct{}{}
+			go simultSendTriples(triples, ch, limitch)
+			triples = make([]*xml2triples.Triple, 0)
+			i = 0
+		}
+
+	}
+	batchcount++
+	limitch <- struct{}{}
+	go simultSendTriples(triples, ch, limitch)
+	for i := 0; i < batchcount; i++ {
+		<-ch
+	}
+	done <- struct{}{}
+}
+
+const HTTPTHREADS = 20
+
 // does not ignore any suggested RefIds for objects: the refids in a static file will be cross-referenced
 func sendReaderToDataStore(r io.Reader) error {
 	// https://stackoverflow.com/a/40526247
 	var buffer bytes.Buffer
-	bufferOffset := int64(0)
+	ch := make(chan struct{})
+	limitch := make(chan struct{}, 20) // throttle simultaneous http posts to 20
+	errch := make(chan error)
+	triplech := make(chan *xml2triples.Triple)
+	batchcount := 0
+	done := make(chan struct{})
+	var sendtripleerror error
+	sendtripleerror = nil
 
+	go sendTriplesAsync(triplech, done)
+	go func() {
+		for e := range errch {
+			sendtripleerror = e
+		}
+	}()
+
+	bufferOffset := int64(0)
 	tee := io.TeeReader(r, &buffer)
 	decoder := xml.NewDecoder(tee)
-	alltriples := make([]*xml2triples.Triple, 0)
-	var triples []*xml2triples.Triple
 	for {
 		tokenStartOffset := decoder.InputOffset()
 		el, err := decoder.Token()
@@ -148,16 +200,12 @@ func sendReaderToDataStore(r io.Reader) error {
 
 			// Now output everything in between!
 			bodyBytes := buffer.Next(int(tokenStartOffset - bufferOffset))
-			// TODO specify context
-			if _, triples, err = xml2triples.StoreXMLasDBtriples(bodyBytes, true, "SIF"); err != nil {
-				log.Println(err)
-				return err
-			}
-			alltriples = append(alltriples, triples...)
-			if len(alltriples) > 1000 {
-				xml2triples.Send_triples(alltriples)
-				alltriples = make([]*xml2triples.Triple, 0)
-			}
+			b := make([]byte, len(bodyBytes))
+			copy(b, string(bodyBytes))
+
+			limitch <- struct{}{}
+			batchcount++
+			go xml2triples.StoreXMLasDBtriplesAsync(b, "SIF", limitch, triplech, errch, ch)
 
 			// And now the buffer's up to date.
 			bufferOffset = tokenStartOffset
@@ -172,8 +220,20 @@ func sendReaderToDataStore(r io.Reader) error {
 		if err == io.EOF {
 			break
 		}
+		if sendtripleerror != nil {
+			break
+		}
 	}
-	xml2triples.Send_triples(alltriples)
+	for i := 0; i < batchcount; i++ {
+		<-ch
+	}
+	close(triplech)
+	close(errch)
+	if sendtripleerror != nil {
+		log.Println(sendtripleerror)
+		return sendtripleerror
+	}
+	<-done
 	return nil
 }
 

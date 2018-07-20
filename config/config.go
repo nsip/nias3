@@ -7,6 +7,7 @@ import (
 
 type Config struct {
 	N3EngineWebport int
+	N3EngineTLSCert string
 	Loaded          bool
 }
 

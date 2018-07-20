@@ -2,8 +2,11 @@ package xml2triples
 
 import (
 	"bytes"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -17,9 +20,46 @@ import (
 	"github.com/twinj/uuid"
 )
 
-var client = &http.Client{}
 var conf = config.LoadConfig()
-var baseUrl = fmt.Sprintf("http://localhost:%d", conf.N3EngineWebport)
+var baseUrl string
+var client = initClient()
+
+const HTTPTHREADS = 2
+
+var limitch chan struct{}
+
+// https://forfuncsake.github.io/post/2017/08/trust-extra-ca-cert-in-go-app/
+// Permit self-signed certificate out of Nias3Engine
+func initClient() *http.Client {
+	limitch = make(chan struct{}, HTTPTHREADS) // throttle simultaneous http posts to 20
+	localCertFile := conf.N3EngineTLSCert
+	if len(localCertFile) == 0 {
+		log.Println("Using HTTP")
+		baseUrl = fmt.Sprintf("http://localhost:%d", conf.N3EngineWebport)
+		return &http.Client{}
+	}
+	rootCAs, _ := x509.SystemCertPool()
+	if rootCAs == nil {
+		rootCAs = x509.NewCertPool()
+	}
+	certs, err := ioutil.ReadFile(localCertFile)
+	if err != nil {
+		log.Fatalf("Failed to append %q to RootCAs: %v", localCertFile, err)
+	}
+	if ok := rootCAs.AppendCertsFromPEM(certs); !ok {
+		log.Println("No certs appended, using system certs only")
+	}
+
+	// Trust the augmented cert pool in our client
+	config := &tls.Config{
+		InsecureSkipVerify: true,
+		RootCAs:            rootCAs,
+	}
+	tr := &http.Transport{TLSClientConfig: config}
+	baseUrl = fmt.Sprintf("https://localhost:%d", conf.N3EngineWebport)
+	log.Println("Using HTTP/2")
+	return &http.Client{Transport: tr}
+}
 
 func changeJSONTags(j string) string {
 	return strings.Replace(j, `"#text":`, `"Value":`, -1)
@@ -98,6 +138,24 @@ func hasKey(keyprefix string, context string) bool {
 	}
 	//log.Printf("hasKey status: %d\n", resp.StatusCode)
 	return resp.StatusCode == 200
+}
+
+// check if key prefix is on Hexastore; asynchronous
+// TODO restrict query to a context
+func hasKeyAsync(keyprefix string, context string, ch chan<- bool, limitch <-chan struct{}) {
+	//log.Printf("%d\n", len(limitch))
+	keyprefix1 := fmt.Sprintf("c:%s %s", strconv.Quote(context), keyprefix)
+	req, err := http.NewRequest("GET", baseUrl+"/HasKey/"+url.PathEscape(keyprefix1), nil)
+	if err != nil {
+		panic(err)
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	<-limitch // throttle HTTP connections
+	//log.Printf("hasKey status: %d\n", resp.StatusCode)
+	ch <- resp.StatusCode == 200
 }
 
 // retrieve tuples from Hexastore matching a key prefix (involving a subset of s: o: p:; the c: prefix
@@ -238,28 +296,78 @@ type Triple struct {
 
 // nominated refid overrides any refid in the object
 func StoreXMLasDBtriples(s []byte, mustUseAdvisory bool, context string) (string, []*Triple, error) {
+	ch := make(chan bool)
+
 	m, err := mxj.NewMapXml(s)
 	if err != nil {
 		return "", nil, err
 	}
 	//log.Printf("mustUseAdvisory %v\n", mustUseAdvisory)
+
 	refid, err := m.ValueForPath("*.-RefId")
 	if err != nil {
 		refid = strings.ToUpper(uuid.NewV4().String())
+		mustUseAdvisory = false
+		m.SetValueForPath(refid, "*.-RefId")
 	} else {
-		if mustUseAdvisory && hasKey(fmt.Sprintf("s:%s p:", strconv.Quote(fmt.Sprintf("%v", refid))), context) {
-			return "", nil, fmt.Errorf("RefID %v already in use\n", refid.(string))
+		if mustUseAdvisory {
+			limitch <- struct{}{}
+			go hasKeyAsync(fmt.Sprintf("s:%s p:", strconv.Quote(fmt.Sprintf("%v", refid))), context, ch, limitch)
 		} else {
 			refid = strings.ToUpper(uuid.NewV4().String())
+			m.SetValueForPath(refid, "*.-RefId")
 		}
+	}
+	triples := make([]*Triple, 0)
+	for _, n := range m.LeafNodes() {
+		triples = append(triples, &Triple{Subject: fmt.Sprintf("%v", refid), Predicate: n.Path, Object: fmt.Sprintf("%v", n.Value), Context: context})
+	}
+	if mustUseAdvisory {
+		refIdClash := <-ch
+		if refIdClash {
+			return "", nil, fmt.Errorf("RefID %v already in use\n", refid.(string))
+		}
+	}
+	return refid.(string), triples, nil
+}
+
+// Async version of above, presupposes mustUseAdvisory = true
+func StoreXMLasDBtriplesAsync(s []byte, context string, extlimitch chan struct{}, outch chan<- *Triple, errch chan<- error, ch chan<- struct{}) {
+	haskeych := make(chan bool)
+	mustUseAdvisory := true
+	m, err := mxj.NewMapXml(s)
+	if err != nil {
+		errch <- err
+		return
+	}
+	refid, err := m.ValueForPath("*.-RefId")
+	if err != nil {
+		refid = strings.ToUpper(uuid.NewV4().String())
+		mustUseAdvisory = false
+	} else {
+		limitch <- struct{}{}
+		go hasKeyAsync(fmt.Sprintf("s:%s p:", strconv.Quote(fmt.Sprintf("%v", refid))), context, haskeych, limitch)
 	}
 	m.SetValueForPath(refid, "*.-RefId")
 	triples := make([]*Triple, 0)
 	for _, n := range m.LeafNodes() {
 		triples = append(triples, &Triple{Subject: fmt.Sprintf("%v", refid), Predicate: n.Path, Object: fmt.Sprintf("%v", n.Value), Context: context})
 	}
-	//Send_triples(triples)
-	return refid.(string), triples, nil
+	<-extlimitch // throttle HTTP connections
+	refIdClash := false
+	if mustUseAdvisory {
+		//refIdClash := hasKey(fmt.Sprintf("s:%s p:", strconv.Quote(fmt.Sprintf("%v", refid))), context)
+		refIdClash = <-haskeych
+		if refIdClash {
+			errch <- fmt.Errorf("RefID %v already in use\n", refid.(string))
+		}
+	}
+	if !refIdClash {
+		for _, t := range triples {
+			outch <- t
+		}
+	}
+	ch <- struct{}{}
 }
 
 var mxj2sjsonPathRe1 = regexp.MustCompile(`\[(\d+)\]`)
