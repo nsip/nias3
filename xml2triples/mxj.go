@@ -110,6 +110,10 @@ func send_triple(triple Triple) {
 
 // always limitch <- struct{}{} before calling
 func send_triples(triples []*Triple) {
+	if len(triples) == 0 {
+		<-limitch
+		return
+	}
 	json, err := json.Marshal(triples)
 	if err != nil {
 		panic(err)
@@ -345,22 +349,36 @@ func StoreXMLasDBtriples(s []byte, mustUseAdvisory bool, context string) (string
 	return refid.(string), triples, nil
 }
 
+type SifResponse struct {
+	AdvisoryId string
+	RefId      string
+	Error      error
+}
+
 // Async version of above, presupposes mustUseAdvisory = true
-func StoreXMLasDBtriplesAsync(s []byte, context string, outch chan<- *Triple, errch chan<- error, ch chan<- struct{}) {
+func StoreXMLasDBtriplesAsync(s []byte, context string, outch chan<- *Triple, errch chan<- SifResponse, ch chan<- struct{}) {
 	haskeych := make(chan bool)
 	mustUseAdvisory := true
 	m, err := mxj.NewMapXml(s)
 	if err != nil {
-		errch <- err
+		errch <- SifResponse{RefId: "", Error: err}
 		return
 	}
-	refid, err := m.ValueForPath("*.-RefId")
+	advisoryIdRaw, err := m.ValueForPath("*.-RefId")
+	var refid, advisoryId string
 	if err != nil {
 		refid = strings.ToUpper(uuid.NewV4().String())
+		advisoryId = ""
 		mustUseAdvisory = false
 	} else {
 		limitch <- struct{}{}
-		go hasKeyAsync(fmt.Sprintf("s:%s p:", strconv.Quote(fmt.Sprintf("%v", refid))), context, haskeych)
+		advisoryId = advisoryIdRaw.(string)
+		if mustUseAdvisory {
+			refid = advisoryId
+			go hasKeyAsync(fmt.Sprintf("s:%s p:", strconv.Quote(fmt.Sprintf("%v", advisoryId))), context, haskeych)
+		} else {
+			refid = strings.ToUpper(uuid.NewV4().String())
+		}
 	}
 	m.SetValueForPath(refid, "*.-RefId")
 	triples := make([]*Triple, 0)
@@ -372,13 +390,14 @@ func StoreXMLasDBtriplesAsync(s []byte, context string, outch chan<- *Triple, er
 		//refIdClash := hasKey(fmt.Sprintf("s:%s p:", strconv.Quote(fmt.Sprintf("%v", refid))), context)
 		refIdClash = <-haskeych
 		if refIdClash {
-			errch <- fmt.Errorf("RefID %v already in use\n", refid.(string))
+			errch <- SifResponse{AdvisoryId: advisoryId, RefId: "", Error: fmt.Errorf("RefID %v already in use\n", refid)}
 		}
 	}
 	if !refIdClash {
 		for _, t := range triples {
 			outch <- t
 		}
+		errch <- SifResponse{AdvisoryId: advisoryId, RefId: refid, Error: nil}
 	}
 	ch <- struct{}{}
 }

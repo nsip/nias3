@@ -66,9 +66,13 @@ func SendXmlToDataStore(filename string) error {
 		log.Printf("Cannot read in file %s\n", filename)
 		return err
 	}
-	err = sendReaderToDataStore(file)
+	ret, err1, err := sendReaderToDataStore(file)
 	if err != nil {
 		return err
+	}
+	log.Println(createResponse(ret))
+	if err1 != nil {
+		return err1
 	}
 	log.Printf("Read in file %s into filestore\n", filename)
 	return nil
@@ -80,9 +84,12 @@ func SIFGetToDataStore(url string) error {
 		return err
 	}
 	defer resp.Body.Close()
-	err = sendReaderToDataStore(resp.Body)
+	_, err1, err := sendReaderToDataStore(resp.Body)
 	if err != nil {
 		return err
+	}
+	if err1 != nil {
+		return err1
 	}
 	return nil
 }
@@ -103,9 +110,12 @@ func SIFGetManyToDataStore(url string) error {
 	defer resp.Body.Close()
 	body = firsttag.ReplaceAll(
 		lasttag.ReplaceAll(body, []byte("")), []byte(""))
-	err = sendReaderToDataStore(bytes.NewReader(body))
+	_, err1, err := sendReaderToDataStore(bytes.NewReader(body))
 	if err != nil {
 		return err
+	}
+	if err1 != nil {
+		return err1
 	}
 	return nil
 }
@@ -145,23 +155,33 @@ func sendTriplesAsync(triplech <-chan *xml2triples.Triple, done chan<- struct{})
 }
 
 // does not ignore any suggested RefIds for objects: the refids in a static file will be cross-referenced
-func sendReaderToDataStore(r io.Reader) error {
+// The file is assumed to be well-formed XML, contained in an element with a plural name (e.g. StudentPersonals),
+// or else the conventional wrapper <sif>
+func sendReaderToDataStore(r io.Reader) ([]xml2triples.SifResponse, error, error) {
 	// https://stackoverflow.com/a/40526247
 	var buffer bytes.Buffer
 	ch := make(chan struct{})
-	errch := make(chan error)
+	refidch := make(chan xml2triples.SifResponse)
 	triplech := make(chan *xml2triples.Triple) // triples gathered from XML, to be posted to REST
 	batchcount := 0
 	done := make(chan struct{})
+	ret_done := make(chan struct{})
 	var sendtripleerror error
 	sendtripleerror = nil
+	var genericerror error
+	genericerror = nil
+	ret := make([]xml2triples.SifResponse, 0)
 
 	go sendTriplesAsync(triplech, done) // send out triples gathered in main goroutine to REST, in batches
-	// gather any errors from errch
 	go func() {
-		for e := range errch {
-			sendtripleerror = e
+		for e := range refidch {
+			ret = append(ret, e)
+			if e.Error != nil {
+				log.Println(sendtripleerror)
+				sendtripleerror = e.Error
+			}
 		}
+		ret_done <- struct{}{}
 	}()
 
 	bufferOffset := int64(0)
@@ -172,17 +192,23 @@ func sendReaderToDataStore(r io.Reader) error {
 		el, err := decoder.Token()
 		if err != nil && err != io.EOF {
 			log.Println(err)
-			return err
+			genericerror = err
+			break
 		}
 		if el == nil {
 			break
 		}
-		switch el.(type) {
+		switch se := el.(type) {
 		case xml.StartElement:
+			if requestMany(se.Name.Local) {
+				continue
+			}
+
 			err := decoder.Skip()
 			if err != nil {
 				log.Println(err)
-				return err
+				genericerror = err
+				break
 			}
 
 			// Clear the buffer up to the beginning of this element.
@@ -200,7 +226,7 @@ func sendReaderToDataStore(r io.Reader) error {
 			copy(b, string(bodyBytes))
 
 			batchcount++
-			go xml2triples.StoreXMLasDBtriplesAsync(b, "SIF", triplech, errch, ch)
+			go xml2triples.StoreXMLasDBtriplesAsync(b, "SIF", triplech, refidch, ch)
 
 			// And now the buffer's up to date.
 			bufferOffset = tokenStartOffset
@@ -215,21 +241,21 @@ func sendReaderToDataStore(r io.Reader) error {
 		if err == io.EOF {
 			break
 		}
-		if sendtripleerror != nil {
-			break
-		}
+		/*
+			if sendtripleerror != nil {
+				break
+			}
+		*/
 	}
 	for i := 0; i < batchcount; i++ {
 		<-ch
 	}
 	close(triplech)
-	close(errch)
-	if sendtripleerror != nil {
-		log.Println(sendtripleerror)
-		return sendtripleerror
-	}
+	close(refidch)
+
+	<-ret_done
 	<-done
-	return nil
+	return ret, sendtripleerror, genericerror
 }
 
 func full_object_replace(c echo.Context) bool {
@@ -302,7 +328,23 @@ func ids2XMLJSON(ids []string, c echo.Context, buffer bytes.Buffer) (bytes.Buffe
 // currently uses the simplistic mechanism of determining whether this is a CREATE ONE or
 // CREATE MANY request based on whether the object name is suffixed by an -s
 func requestMany(objectname string) bool {
-	return strings.HasSuffix(objectname, "s")
+	return strings.HasSuffix(objectname, "s") || objectname == "sif"
+}
+
+func createResponse(responses []xml2triples.SifResponse) string {
+	var bld strings.Builder
+	bld.WriteString("<createResponse>\n  <creates>\n")
+	for _, r := range responses {
+		if r.Error == nil {
+			bld.WriteString(fmt.Sprintf("    <create id=\"%s\" advisoryId=\"%s\" statusCode = \"201\"/>\n", r.RefId, r.AdvisoryId))
+		} else {
+			bld.WriteString(fmt.Sprintf("    <create advisoryId=\"%s\" statusCode = \"409\">\n", r.AdvisoryId))
+			bld.WriteString(fmt.Sprintf("      <error id=\"%s\">\n", strings.ToUpper(uuid.NewV4().String())))
+			bld.WriteString(fmt.Sprintf("        <code>409</code>\n        <scope>StateConflict</scope>\n        <message>Object with that RefId already exists</message>\n      </error>\n    </create>\n"))
+		}
+	}
+	bld.WriteString("  <creates>\n<createResponse>\n")
+	return bld.String()
 }
 
 func Webserver() {
@@ -315,19 +357,25 @@ func Webserver() {
 	directoryWatcher()
 
 	e.POST("/sifxml/:object", func(c echo.Context) error {
-		if requestMany(c.Param("object")) {
-			// TODO: implement POST MANY
-			err = fmt.Errorf("Multiple object payloads not yet implemented")
-			c.String(http.StatusBadRequest, err.Error())
-			return err
-		} else {
-			object := strings.TrimSuffix(c.Param("object"), "s")
-			var bodyBytes []byte
-			if c.Request().Body != nil {
-				if bodyBytes, err = ioutil.ReadAll(c.Request().Body); err != nil {
-					c.String(http.StatusBadRequest, err.Error())
+		var bodyBytes []byte
+		if c.Request().Body != nil {
+			if bodyBytes, err = ioutil.ReadAll(c.Request().Body); err != nil {
+				c.String(http.StatusBadRequest, err.Error())
+				return err
+			}
+
+			if requestMany(c.Param("object")) {
+				// we don't validate the object name against each element
+				// we don't validate the well-formedness of the payload in advance
+				ret, _, genericerr := sendReaderToDataStore(bytes.NewReader(bodyBytes))
+				if genericerr != nil {
+					c.String(http.StatusBadRequest, genericerr.Error())
 					return err
 				}
+				c.Response().Header().Set("Content-Type", "application/xml")
+				c.String(http.StatusOK, createResponse(ret))
+			} else {
+				object := strings.TrimSuffix(c.Param("object"), "s")
 				objname := xmlobject.FindSubmatch(bodyBytes)
 				if objname == nil {
 					err = fmt.Errorf("No XML root element")
