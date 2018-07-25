@@ -110,17 +110,17 @@ func SIFGetManyToDataStore(url string) error {
 	return nil
 }
 
-func simultSendTriples(alltriples []*xml2triples.Triple, ch chan<- struct{}, limitch <-chan struct{}) {
-	<-limitch // buffered channel, to throttle simult connections to http
+func simultSendTriples(alltriples []*xml2triples.Triple, done chan<- struct{}) {
+	ch := make(chan struct{})
 	tmp := make([]*xml2triples.Triple, len(alltriples))
 	copy(tmp, alltriples)
-	xml2triples.Send_triples(tmp)
-	ch <- struct{}{} // to sync all triples batches sent
+	go xml2triples.SendTriplesAsync(tmp, ch)
+	<-ch
+	done <- struct{}{} // to sync all triples batches sent
 }
 
 func sendTriplesAsync(triplech <-chan *xml2triples.Triple, done chan<- struct{}) {
-	limitch := make(chan struct{}, HTTPTHREADS) // throttle simultaneous http posts to 20
-	ch := make(chan struct{})
+	ch := make(chan struct{}) // channel to sync all the triples being sent through REST
 	batchcount := 0
 
 	triples := make([]*xml2triples.Triple, 0)
@@ -130,38 +130,34 @@ func sendTriplesAsync(triplech <-chan *xml2triples.Triple, done chan<- struct{})
 		triples = append(triples, t)
 		if i == 1000 {
 			batchcount++
-			limitch <- struct{}{}
-			go simultSendTriples(triples, ch, limitch)
+			go simultSendTriples(triples, ch)
 			triples = make([]*xml2triples.Triple, 0)
 			i = 0
 		}
 
 	}
 	batchcount++
-	limitch <- struct{}{}
-	go simultSendTriples(triples, ch, limitch)
+	go simultSendTriples(triples, ch)
 	for i := 0; i < batchcount; i++ {
 		<-ch
 	}
 	done <- struct{}{}
 }
 
-const HTTPTHREADS = 20
-
 // does not ignore any suggested RefIds for objects: the refids in a static file will be cross-referenced
 func sendReaderToDataStore(r io.Reader) error {
 	// https://stackoverflow.com/a/40526247
 	var buffer bytes.Buffer
 	ch := make(chan struct{})
-	limitch := make(chan struct{}, 20) // throttle simultaneous http posts to 20
 	errch := make(chan error)
-	triplech := make(chan *xml2triples.Triple)
+	triplech := make(chan *xml2triples.Triple) // triples gathered from XML, to be posted to REST
 	batchcount := 0
 	done := make(chan struct{})
 	var sendtripleerror error
 	sendtripleerror = nil
 
-	go sendTriplesAsync(triplech, done)
+	go sendTriplesAsync(triplech, done) // send out triples gathered in main goroutine to REST, in batches
+	// gather any errors from errch
 	go func() {
 		for e := range errch {
 			sendtripleerror = e
@@ -203,9 +199,8 @@ func sendReaderToDataStore(r io.Reader) error {
 			b := make([]byte, len(bodyBytes))
 			copy(b, string(bodyBytes))
 
-			limitch <- struct{}{}
 			batchcount++
-			go xml2triples.StoreXMLasDBtriplesAsync(b, "SIF", limitch, triplech, errch, ch)
+			go xml2triples.StoreXMLasDBtriplesAsync(b, "SIF", triplech, errch, ch)
 
 			// And now the buffer's up to date.
 			bufferOffset = tokenStartOffset
@@ -321,6 +316,7 @@ func Webserver() {
 
 	e.POST("/sifxml/:object", func(c echo.Context) error {
 		if requestMany(c.Param("object")) {
+			// TODO: implement POST MANY
 			err = fmt.Errorf("Multiple object payloads not yet implemented")
 			c.String(http.StatusBadRequest, err.Error())
 			return err
@@ -349,7 +345,9 @@ func Webserver() {
 					c.String(http.StatusUnprocessableEntity, err.Error())
 					return err
 				}
-				xml2triples.Send_triples(triples)
+				ch := make(chan struct{})
+				go xml2triples.SendTriplesAsync(triples, ch)
+				<-ch
 				x, err := xml2triples.DbTriples2XML(guid, "SIF", true)
 				if err != nil {
 					c.String(http.StatusUnprocessableEntity, err.Error())
@@ -364,44 +362,52 @@ func Webserver() {
 
 	e.PUT("/sifxml/:object/:refid", func(c echo.Context) error {
 		refid := c.Param("refid")
+		object := c.Param("object")
 		var bodyBytes []byte
-		object := strings.TrimSuffix(c.Param("object"), "s")
-		if c.Request().Body != nil {
-			if bodyBytes, err = ioutil.ReadAll(c.Request().Body); err != nil {
-				c.String(http.StatusBadRequest, err.Error())
-				return err
-			}
-			objname := xmlobject.FindSubmatch(bodyBytes)
-			if objname == nil {
-				err = fmt.Errorf("No XML root element")
-				c.String(http.StatusBadRequest, err.Error())
-				return err
-			}
-			if string(objname[1]) != object {
-				err = fmt.Errorf("%s does not match expected XML root element %s", objname[1], object)
-				c.String(http.StatusBadRequest, err.Error())
-				return err
-			}
-			var err error
-			full := full_object_replace(c)
-			if full {
-				if err = xml2triples.UpdateFullXMLasDBtriples(bodyBytes, refid, "SIF"); err != nil {
+		if requestMany(object) {
+			// TODO: implement PUT MANY
+			err = fmt.Errorf("Multiple object payloads not yet implemented")
+			c.String(http.StatusBadRequest, err.Error())
+			return err
+		} else {
+			object := strings.TrimSuffix(object, "s")
+			if c.Request().Body != nil {
+				if bodyBytes, err = ioutil.ReadAll(c.Request().Body); err != nil {
+					c.String(http.StatusBadRequest, err.Error())
+					return err
+				}
+				objname := xmlobject.FindSubmatch(bodyBytes)
+				if objname == nil {
+					err = fmt.Errorf("No XML root element")
+					c.String(http.StatusBadRequest, err.Error())
+					return err
+				}
+				if string(objname[1]) != object {
+					err = fmt.Errorf("%s does not match expected XML root element %s", objname[1], object)
+					c.String(http.StatusBadRequest, err.Error())
+					return err
+				}
+				var err error
+				full := full_object_replace(c)
+				if full {
+					if err = xml2triples.UpdateFullXMLasDBtriples(bodyBytes, refid, "SIF"); err != nil {
+						c.String(http.StatusUnprocessableEntity, err.Error())
+						return err
+					}
+				} else {
+					if err = xml2triples.UpdatePartialXMLasDBtriples(bodyBytes, refid, "SIF"); err != nil {
+						c.String(http.StatusUnprocessableEntity, err.Error())
+						return err
+					}
+				}
+				x, err := xml2triples.DbTriples2XML(refid, "SIF", true)
+				if err != nil {
 					c.String(http.StatusUnprocessableEntity, err.Error())
 					return err
 				}
-			} else {
-				if err = xml2triples.UpdatePartialXMLasDBtriples(bodyBytes, refid, "SIF"); err != nil {
-					c.String(http.StatusUnprocessableEntity, err.Error())
-					return err
-				}
+				c.Response().Header().Set("Content-Type", "application/xml")
+				c.String(http.StatusOK, string(x))
 			}
-			x, err := xml2triples.DbTriples2XML(refid, "SIF", true)
-			if err != nil {
-				c.String(http.StatusUnprocessableEntity, err.Error())
-				return err
-			}
-			c.Response().Header().Set("Content-Type", "application/xml")
-			c.String(http.StatusOK, string(x))
 		}
 		return nil
 	})
@@ -429,8 +435,6 @@ func Webserver() {
 			}
 			for i, refid := range objIDs {
 				x, err := xml2triples.DbTriples2XML(refid, "SIF", false)
-				//log.Printf("%+v\n", err)
-				//log.Println(string(x))
 				if err != nil {
 					log.Println(err.Error())
 					c.String(http.StatusInternalServerError, err.Error())
@@ -467,15 +471,22 @@ func Webserver() {
 	})
 
 	e.DELETE("/sifxml/:object/:refid", func(c echo.Context) error {
-		//object := c.Param("object")
+		// we don't check the type of object we're deleting
 		refid := c.Param("refid")
-		err := xml2triples.DeleteTriplesForRefId(refid, "SIF")
-		if err != nil {
+		if requestMany(c.Param("object")) {
+			// TODO: implement DELETE MANY
+			err = fmt.Errorf("Multiple object payloads not yet implemented")
 			c.String(http.StatusBadRequest, err.Error())
 			return err
+		} else {
+			err := xml2triples.DeleteTriplesForRefId(refid, "SIF")
+			if err != nil {
+				c.String(http.StatusBadRequest, err.Error())
+				return err
+			}
+			c.Response().Header().Set("Content-Type", "application/xml")
+			c.String(http.StatusOK, string(refid))
 		}
-		c.Response().Header().Set("Content-Type", "application/xml")
-		c.String(http.StatusOK, string(refid))
 		return nil
 	})
 

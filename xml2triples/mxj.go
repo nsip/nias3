@@ -24,14 +24,14 @@ var conf = config.LoadConfig()
 var baseUrl string
 var client = initClient()
 
-const HTTPTHREADS = 2
+const HTTPTHREADS = 100
 
 var limitch chan struct{}
 
 // https://forfuncsake.github.io/post/2017/08/trust-extra-ca-cert-in-go-app/
 // Permit self-signed certificate out of Nias3Engine
 func initClient() *http.Client {
-	limitch = make(chan struct{}, HTTPTHREADS) // throttle simultaneous http posts to 20
+	limitch = make(chan struct{}, HTTPTHREADS) // throttle simultaneous http posts
 	localCertFile := conf.N3EngineTLSCert
 	if len(localCertFile) == 0 {
 		log.Println("Using HTTP")
@@ -88,6 +88,7 @@ func Map2SIFXML(m mxj.Map, stripempty bool) ([]byte, error) {
 	return ret, nil
 }
 
+/*
 func send_triple(triple Triple) {
 	json, err := json.Marshal(triple)
 	if err != nil {
@@ -105,13 +106,16 @@ func send_triple(triple Triple) {
 	}
 	defer resp.Body.Close()
 }
+*/
 
-func Send_triples(triples []*Triple) {
+// always limitch <- struct{}{} before calling
+func send_triples(triples []*Triple) {
 	json, err := json.Marshal(triples)
 	if err != nil {
 		panic(err)
 	}
 	//log.Println(string(json))
+	<-limitch
 	req, err := http.NewRequest("POST", baseUrl+"/tuples", bytes.NewBuffer(json))
 	if err != nil {
 		panic(err)
@@ -122,6 +126,12 @@ func Send_triples(triples []*Triple) {
 		panic(err)
 	}
 	defer resp.Body.Close()
+}
+
+func SendTriplesAsync(triples []*Triple, done chan<- struct{}) {
+	limitch <- struct{}{}
+	send_triples(triples)
+	done <- struct{}{}
 }
 
 // check if key prefix is on Hexastore
@@ -142,7 +152,7 @@ func hasKey(keyprefix string, context string) bool {
 
 // check if key prefix is on Hexastore; asynchronous
 // TODO restrict query to a context
-func hasKeyAsync(keyprefix string, context string, ch chan<- bool, limitch <-chan struct{}) {
+func hasKeyAsync(keyprefix string, context string, ch chan<- bool) {
 	//log.Printf("%d\n", len(limitch))
 	keyprefix1 := fmt.Sprintf("c:%s %s", strconv.Quote(context), keyprefix)
 	req, err := http.NewRequest("GET", baseUrl+"/HasKey/"+url.PathEscape(keyprefix1), nil)
@@ -246,7 +256,8 @@ func DeleteTriplesForRefId(refid string, context string) error {
 	for i := range triples {
 		triples[i].Object = ""
 	}
-	Send_triples(triples)
+	limitch <- struct{}{}
+	send_triples(triples)
 	return nil
 }
 
@@ -260,7 +271,8 @@ func UpdateFullXMLasDBtriples(s []byte, refid string, context string) error {
 	for _, n := range m.LeafNodes() {
 		triples = append(triples, &Triple{Subject: fmt.Sprintf("%v", refid), Predicate: n.Path, Object: fmt.Sprintf("%v", n.Value), Context: context})
 	}
-	Send_triples(triples)
+	limitch <- struct{}{}
+	send_triples(triples)
 	return nil
 }
 
@@ -278,12 +290,14 @@ func UpdatePartialXMLasDBtriples(s []byte, refid string, context string) error {
 		}
 		all_triples = append(all_triples, triples...)
 	}
-	Send_triples(all_triples)
+	limitch <- struct{}{}
+	send_triples(all_triples)
 	all_triples = make([]*Triple, 0)
 	for _, n := range m.LeafNodes() {
 		all_triples = append(all_triples, &Triple{Subject: fmt.Sprintf("%v", refid), Predicate: n.Path, Object: fmt.Sprintf("%v", n.Value), Context: context})
 	}
-	Send_triples(all_triples)
+	limitch <- struct{}{}
+	send_triples(all_triples)
 	return nil
 }
 
@@ -312,7 +326,7 @@ func StoreXMLasDBtriples(s []byte, mustUseAdvisory bool, context string) (string
 	} else {
 		if mustUseAdvisory {
 			limitch <- struct{}{}
-			go hasKeyAsync(fmt.Sprintf("s:%s p:", strconv.Quote(fmt.Sprintf("%v", refid))), context, ch, limitch)
+			go hasKeyAsync(fmt.Sprintf("s:%s p:", strconv.Quote(fmt.Sprintf("%v", refid))), context, ch)
 		} else {
 			refid = strings.ToUpper(uuid.NewV4().String())
 			m.SetValueForPath(refid, "*.-RefId")
@@ -332,7 +346,7 @@ func StoreXMLasDBtriples(s []byte, mustUseAdvisory bool, context string) (string
 }
 
 // Async version of above, presupposes mustUseAdvisory = true
-func StoreXMLasDBtriplesAsync(s []byte, context string, extlimitch chan struct{}, outch chan<- *Triple, errch chan<- error, ch chan<- struct{}) {
+func StoreXMLasDBtriplesAsync(s []byte, context string, outch chan<- *Triple, errch chan<- error, ch chan<- struct{}) {
 	haskeych := make(chan bool)
 	mustUseAdvisory := true
 	m, err := mxj.NewMapXml(s)
@@ -346,14 +360,13 @@ func StoreXMLasDBtriplesAsync(s []byte, context string, extlimitch chan struct{}
 		mustUseAdvisory = false
 	} else {
 		limitch <- struct{}{}
-		go hasKeyAsync(fmt.Sprintf("s:%s p:", strconv.Quote(fmt.Sprintf("%v", refid))), context, haskeych, limitch)
+		go hasKeyAsync(fmt.Sprintf("s:%s p:", strconv.Quote(fmt.Sprintf("%v", refid))), context, haskeych)
 	}
 	m.SetValueForPath(refid, "*.-RefId")
 	triples := make([]*Triple, 0)
 	for _, n := range m.LeafNodes() {
 		triples = append(triples, &Triple{Subject: fmt.Sprintf("%v", refid), Predicate: n.Path, Object: fmt.Sprintf("%v", n.Value), Context: context})
 	}
-	<-extlimitch // throttle HTTP connections
 	refIdClash := false
 	if mustUseAdvisory {
 		//refIdClash := hasKey(fmt.Sprintf("s:%s p:", strconv.Quote(fmt.Sprintf("%v", refid))), context)
