@@ -1,2 +1,2 @@
 N3EngineWebport = 1340
-N3EngineTLSCert = "/Users/nickn/Documents/Arbeit/go/src/github.com/nsip/nias3-engine/app/n3/cert.pem"
+#N3EngineTLSCert = "/Users/nickn/Documents/Arbeit/go/src/github.com/nsip/nias3-engine/app/n3/cert.pem"
