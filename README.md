@@ -78,7 +78,7 @@ Performing the initial handshake to obtain authentication for the SIF endpoint (
 
 ### File watcher
 
-A file watcher has been implemented on folder `./in`. Any file that is created or updated in that directory (or its subdirectories), with suffix `.xml`, is parsed, and its children XML records are posted to the Hexastore.
+A file watcher has been implemented on folder `./in`. Any file that is created or updated in that directory (or its subdirectories), with suffix `.xml`, is parsed, and its children XML records are posted to the Hexastore. The file is assumed to be well-formed XML, and its root node must be either "sif", or a plural SIF object name (e.g. "StudentPersonals")
 
 Functionality to come:
 * Update SIF/XML from file watcher
