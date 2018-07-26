@@ -22,6 +22,7 @@ import (
 
 var xmlobject = regexp.MustCompile(`(?s:^\s*<([^> ]+))`)
 
+// Watch a dropbox directory for new files, and post their contents to REST
 func directoryWatcher() {
 	var err error
 	w := watcher.New()
@@ -50,6 +51,7 @@ func directoryWatcher() {
 	}()
 }
 
+// post the contents of an XML file to REST
 func SendXmlToDataStore(filename string) error {
 	fi, err := os.Lstat(filename)
 	if err != nil {
@@ -78,6 +80,8 @@ func SendXmlToDataStore(filename string) error {
 	return nil
 }
 
+// url: e.g. http://hits.nsip.edu.au/SIF3InfraREST/hits/requests/SchoolInfos?navigationPage=1&navigationPageSize=5&access_token=ZmZhODMzNjEtMGExOC00NDk5LTgyNjMtYjMwNjI4MGRjZDRlOmYxYzA1NjNhOWIzZTQyMGJiMDdkYTJkOTBkYjQ3OWVm&authenticationMethod=Basic
+// do an HTTP GET on a URL, and post the XML respone to REST
 func SIFGetToDataStore(url string) error {
 	resp, err := http.Get(url)
 	if err != nil {
@@ -94,32 +98,7 @@ func SIFGetToDataStore(url string) error {
 	return nil
 }
 
-var firsttag = regexp.MustCompile(`^\s*<[^>]+>`)
-var lasttag = regexp.MustCompile(`<[^>]+>\s*$`)
-
-// url: e.g. http://hits.nsip.edu.au/SIF3InfraREST/hits/requests/SchoolInfos?navigationPage=1&navigationPageSize=5&access_token=ZmZhODMzNjEtMGExOC00NDk5LTgyNjMtYjMwNjI4MGRjZDRlOmYxYzA1NjNhOWIzZTQyMGJiMDdkYTJkOTBkYjQ3OWVm&authenticationMethod=Basic
-func SIFGetManyToDataStore(url string) error {
-	resp, err := http.Get(url)
-	if err != nil {
-		return err
-	}
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	body = firsttag.ReplaceAll(
-		lasttag.ReplaceAll(body, []byte("")), []byte(""))
-	_, err1, err := sendReaderToDataStore(bytes.NewReader(body))
-	if err != nil {
-		return err
-	}
-	if err1 != nil {
-		return err1
-	}
-	return nil
-}
-
+// asynchronously post a slice of triples to REST
 func simultSendTriples(alltriples []*xml2triples.Triple, done chan<- struct{}) {
 	ch := make(chan struct{})
 	tmp := make([]*xml2triples.Triple, len(alltriples))
@@ -129,6 +108,7 @@ func simultSendTriples(alltriples []*xml2triples.Triple, done chan<- struct{}) {
 	done <- struct{}{} // to sync all triples batches sent
 }
 
+// asynchronously post a channel of triples to REST, in batches of 1000 triples
 func sendTriplesAsync(triplech <-chan *xml2triples.Triple, done chan<- struct{}) {
 	ch := make(chan struct{}) // channel to sync all the triples being sent through REST
 	batchcount := 0
@@ -154,9 +134,12 @@ func sendTriplesAsync(triplech <-chan *xml2triples.Triple, done chan<- struct{})
 	done <- struct{}{}
 }
 
-// does not ignore any suggested RefIds for objects: the refids in a static file will be cross-referenced
-// The file is assumed to be well-formed XML, contained in an element with a plural name (e.g. StudentPersonals),
+// Send a file of XML to REST, and return the response for each object in the XML.
+// The file is assumed to be well-formed XML, containing either a single or multiple objects. If it contains
+// multiple objects, these are to be contained in an element with a plural name (e.g. StudentPersonals),
 // or else the conventional wrapper <sif>
+// Does not ignore any suggested RefIds for objects (mustUseAdvisory = true):
+// the refids in a static file will be cross-referenced.
 func sendReaderToDataStore(r io.Reader) ([]xml2triples.SifResponse, error, error) {
 	// https://stackoverflow.com/a/40526247
 	var buffer bytes.Buffer
@@ -258,6 +241,7 @@ func sendReaderToDataStore(r io.Reader) ([]xml2triples.SifResponse, error, error
 	return ret, sendtripleerror, genericerror
 }
 
+// is this update request a PUT or a PATCH?
 func full_object_replace(c echo.Context) bool {
 	h := c.Request().Header
 	full := false
@@ -272,6 +256,7 @@ func full_object_replace(c echo.Context) bool {
 	return full
 }
 
+// should the response be in JSON?
 func headerJSON(c echo.Context) bool {
 	h := c.Request().Header
 	if accept, ok := h["Accept"]; ok {
@@ -284,16 +269,21 @@ func headerJSON(c echo.Context) bool {
 	return false
 }
 
+// is the mustUseAdvisory field on in the request?
 func mustUseAdvisory(c echo.Context) bool {
 	h := c.Request().Header
 	_, ok := h["Mustuseadvisory"]
 	return ok
 }
 
-func ids2XMLJSON(ids []string, c echo.Context, buffer bytes.Buffer) (bytes.Buffer, error) {
+// query REST for the XML corresponding to a set of RefIDs. If content has been requested in JSON,
+// convert XML to Goessner JSON. Return XML or JSON, and sets HTTP response content type
+func ids2XMLJSON(ids []string, objectname string, c echo.Context, buffer bytes.Buffer) (bytes.Buffer, error) {
 	json := headerJSON(c)
 	if json {
 		buffer.Write([]byte("["))
+	} else { // xml
+		buffer.Write([]byte("<" + objectname + ">\n"))
 	}
 	for i, refid := range ids {
 		obj, err := xml2triples.DbTriples2XML(refid, "SIF", true)
@@ -316,10 +306,9 @@ func ids2XMLJSON(ids []string, c echo.Context, buffer bytes.Buffer) (bytes.Buffe
 	}
 	if json {
 		buffer.Write([]byte("]"))
-	}
-	if json {
 		c.Response().Header().Set("Content-Type", "application/json")
 	} else {
+		buffer.Write([]byte("</" + objectname + ">\n"))
 		c.Response().Header().Set("Content-Type", "application/xml")
 	}
 	return buffer, nil
@@ -331,6 +320,7 @@ func requestMany(objectname string) bool {
 	return strings.HasSuffix(objectname, "s") || objectname == "sif"
 }
 
+// formulate SIF Create Response to POST MANY
 func createResponse(responses []xml2triples.SifResponse) string {
 	var bld strings.Builder
 	bld.WriteString("<createResponse>\n  <creates>\n")
@@ -412,18 +402,17 @@ func Webserver() {
 		refid := c.Param("refid")
 		object := c.Param("object")
 		var bodyBytes []byte
-		if requestMany(object) {
-			// TODO: implement PUT MANY
-			err = fmt.Errorf("Multiple object payloads not yet implemented")
-			c.String(http.StatusBadRequest, err.Error())
-			return err
-		} else {
-			object := strings.TrimSuffix(object, "s")
-			if c.Request().Body != nil {
-				if bodyBytes, err = ioutil.ReadAll(c.Request().Body); err != nil {
-					c.String(http.StatusBadRequest, err.Error())
-					return err
-				}
+		if c.Request().Body != nil {
+			if bodyBytes, err = ioutil.ReadAll(c.Request().Body); err != nil {
+				c.String(http.StatusBadRequest, err.Error())
+				return err
+			}
+			if requestMany(object) {
+				// TODO: implement PUT MANY
+				err = fmt.Errorf("Multiple object payloads not yet implemented")
+				c.String(http.StatusBadRequest, err.Error())
+				return err
+			} else {
 				objname := xmlobject.FindSubmatch(bodyBytes)
 				if objname == nil {
 					err = fmt.Errorf("No XML root element")
@@ -569,7 +558,7 @@ func Webserver() {
 		kla := c.QueryParam("kla")
 		yrlvl := c.QueryParam("yrlvl")
 		ids := xml2triples.Kla2student(kla, yrlvl)
-		buffer, err := ids2XMLJSON(ids, c, buffer)
+		buffer, err := ids2XMLJSON(ids, "sif", c, buffer)
 		if err != nil {
 			log.Println(err.Error())
 			c.String(http.StatusBadRequest, err.Error())
@@ -584,7 +573,7 @@ func Webserver() {
 		kla := c.QueryParam("kla")
 		yrlvl := c.QueryParam("yrlvl")
 		ids := xml2triples.Kla2staff(kla, yrlvl)
-		buffer, err := ids2XMLJSON(ids, c, buffer)
+		buffer, err := ids2XMLJSON(ids, "sif", c, buffer)
 		if err != nil {
 			log.Println(err.Error())
 			c.String(http.StatusBadRequest, err.Error())
@@ -599,7 +588,7 @@ func Webserver() {
 		kla := c.QueryParam("kla")
 		yrlvl := c.QueryParam("yrlvl")
 		ids := xml2triples.Kla2teachinggroup(kla, yrlvl)
-		buffer, err := ids2XMLJSON(ids, c, buffer)
+		buffer, err := ids2XMLJSON(ids, "sif", c, buffer)
 		if err != nil {
 			log.Println(err.Error())
 			c.String(http.StatusBadRequest, err.Error())
@@ -614,7 +603,7 @@ func Webserver() {
 		kla := c.QueryParam("kla")
 		yrlvl := c.QueryParam("yrlvl")
 		ids := xml2triples.Kla2timetablesubject(kla, yrlvl)
-		buffer, err := ids2XMLJSON(ids, c, buffer)
+		buffer, err := ids2XMLJSON(ids, "sif", c, buffer)
 		if err != nil {
 			log.Println(err.Error())
 			c.String(http.StatusBadRequest, err.Error())

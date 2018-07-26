@@ -12,6 +12,8 @@ echo '\ncurl -i -d "@staffpersonal.xml" -H "mustUseAdvisory: true" -X POST http:
 curl -i -d "@staffpersonal.xml" -H "mustUseAdvisory: true" -X POST http://localhost:1492/sifxml/StaffPersonals
 echo '\ncurl -i -d "@staffpersonal.xml" -X POST http://localhost:1492/sifxml/StaffPersonals\n\n'
 curl -i -d "@staffpersonal.xml" -X POST http://localhost:1492/sifxml/StaffPersonals
+echo '\ncurl -i -d "@staffpersonals.xml" -X POST http://localhost:1492/sifxml/StaffPersonals\n\n'
+curl -i -d "@staffpersonals.xml" -X POST http://localhost:1492/sifxml/StaffPersonals
 echo '\ncurl -i -X GET http://localhost:1492/sifxml/PurchaseOrders\n\n'
 curl -i -X GET http://localhost:1492/sifxml/PurchaseOrders
 echo '\ncurl -i -X GET http://localhost:1492/sifxml/StaffPersonals\n\n'
