@@ -87,6 +87,7 @@ func Map2SIFXML(m mxj.Map, stripempty bool) ([]byte, error) {
 	if stripempty {
 		ret = stripEmptyTags(ret)
 	}
+	ret = append(ret, []byte("\n")...)
 	return ret, nil
 }
 
@@ -548,12 +549,12 @@ func GetAllXMLByObject(object string, context string) ([]string, error) {
 
 func DbTriples2XML(refid string, context string, stripempty bool) ([]byte, error) {
 	triples := getTuples(fmt.Sprintf("s:%s p:", strconv.Quote(fmt.Sprintf("%v", refid))), context)
-	log.Printf("%+v\n", triples)
+	//log.Printf("%+v\n", triples)
 
 	json := ""
 	var err error
 	for _, t := range triples {
-		log.Printf("%s %s %s\n", t.Subject, mxj2sjsonPath(t.Predicate), t.Object)
+		//log.Printf("%s %s %s\n", t.Subject, mxj2sjsonPath(t.Predicate), t.Object)
 		json, err = sjson.Set(json, mxj2sjsonPath(t.Predicate), t.Object)
 		if err != nil {
 			return nil, err

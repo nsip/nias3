@@ -484,7 +484,7 @@ func Webserver() {
 				return err
 			}
 			objects := c.Param("objects")
-			// https://github.com/labstack/echo/issues/1139 :
+			// https://github.com/labstack/echo/issues/1139 : have to name "refid", but it's actually object name
 			object := c.Param("refid")
 			if object != strings.TrimSuffix(objects, "s") {
 				err = errors.New("POST ONE request path is malformed")
@@ -512,6 +512,8 @@ func Webserver() {
 			ch := make(chan struct{})
 			go xml2triples.SendTriplesAsync(triples, "SIF", ch)
 			<-ch
+			// allow time for triples to be stored
+			time.Sleep(200 * time.Millisecond)
 			x, err := xml2triples.DbTriples2XML(guid, "SIF", true)
 			if err != nil {
 				c.String(http.StatusUnprocessableEntity, err.Error())
@@ -578,6 +580,7 @@ func Webserver() {
 					return err
 				}
 			}
+			time.Sleep(200 * time.Millisecond)
 			x, err := xml2triples.DbTriples2XML(refid, "SIF", true)
 			if err != nil {
 				c.String(http.StatusUnprocessableEntity, err.Error())
