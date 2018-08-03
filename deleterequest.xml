@@ -1,0 +1,7 @@
+<deleteRequest xmlns="http://www.sifassociation.org/infrastructure/3.2.1">
+  <deletes>
+    <delete id="D3E34F41-9D75-101A-8C3D-00AA001A1652"/> 
+    <delete id="abc89e1c-34e7-4cde-908a-d9abc81ea09a"/> 
+    <delete id="ff789e1c-dfe7-4c18-8ef0-d907b81ea61e"/>
+  </deletes> 
+</deleteRequest>
