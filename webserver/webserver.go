@@ -3,6 +3,7 @@ package webserver
 import (
 	"bytes"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
@@ -21,6 +22,14 @@ import (
 )
 
 var xmlobject = regexp.MustCompile(`(?s:^\s*<([^> ]+))`)
+
+// write actions in REST
+const (
+	POST = iota
+	PUT
+	PATCH
+	DELETE
+)
 
 // Watch a dropbox directory for new files, and post their contents to REST
 func directoryWatcher() {
@@ -68,7 +77,7 @@ func SendXmlToDataStore(filename string) error {
 		log.Printf("Cannot read in file %s\n", filename)
 		return err
 	}
-	ret, err1, err := sendReaderToDataStore(file)
+	ret, err1, err := sendReaderToDataStore(file, true, POST)
 	if err != nil {
 		return err
 	}
@@ -88,7 +97,7 @@ func SIFGetToDataStore(url string) error {
 		return err
 	}
 	defer resp.Body.Close()
-	_, err1, err := sendReaderToDataStore(resp.Body)
+	_, err1, err := sendReaderToDataStore(resp.Body, true, POST)
 	if err != nil {
 		return err
 	}
@@ -99,17 +108,17 @@ func SIFGetToDataStore(url string) error {
 }
 
 // asynchronously post a slice of triples to REST
-func simultSendTriples(alltriples []*xml2triples.Triple, done chan<- struct{}) {
+func simultSendTriples(alltriples []*xml2triples.Triple, context string, done chan<- struct{}) {
 	ch := make(chan struct{})
 	tmp := make([]*xml2triples.Triple, len(alltriples))
 	copy(tmp, alltriples)
-	go xml2triples.SendTriplesAsync(tmp, ch)
+	go xml2triples.SendTriplesAsync(tmp, context, ch)
 	<-ch
 	done <- struct{}{} // to sync all triples batches sent
 }
 
 // asynchronously post a channel of triples to REST, in batches of 1000 triples
-func sendTriplesAsync(triplech <-chan *xml2triples.Triple, done chan<- struct{}) {
+func sendTriplesAsync(triplech <-chan *xml2triples.Triple, context string, done chan<- struct{}) {
 	ch := make(chan struct{}) // channel to sync all the triples being sent through REST
 	batchcount := 0
 
@@ -117,30 +126,33 @@ func sendTriplesAsync(triplech <-chan *xml2triples.Triple, done chan<- struct{})
 	i := 0
 	for t := range triplech {
 		i++
+		triplesSent++
 		triples = append(triples, t)
 		if i == 1000 {
 			batchcount++
-			go simultSendTriples(triples, ch)
+			go simultSendTriples(triples, context, ch)
 			triples = make([]*xml2triples.Triple, 0)
 			i = 0
 		}
 
 	}
 	batchcount++
-	go simultSendTriples(triples, ch)
+	go simultSendTriples(triples, context, ch)
 	for i := 0; i < batchcount; i++ {
 		<-ch
 	}
 	done <- struct{}{}
 }
 
+var triplesSent int
+
 // Send a file of XML to REST, and return the response for each object in the XML.
 // The file is assumed to be well-formed XML, containing either a single or multiple objects. If it contains
 // multiple objects, these are to be contained in an element with a plural name (e.g. StudentPersonals),
 // or else the conventional wrapper <sif>
-// Does not ignore any suggested RefIds for objects (mustUseAdvisory = true):
+// If mustUseAdvisory = true, does not ignore any suggested RefIds for objects:
 // the refids in a static file will be cross-referenced.
-func sendReaderToDataStore(r io.Reader) ([]xml2triples.SifResponse, error, error) {
+func sendReaderToDataStore(r io.Reader, mustUseAdvisory bool, verb int) ([]xml2triples.SifResponse, error, error) {
 	// https://stackoverflow.com/a/40526247
 	var buffer bytes.Buffer
 	ch := make(chan struct{})
@@ -154,8 +166,10 @@ func sendReaderToDataStore(r io.Reader) ([]xml2triples.SifResponse, error, error
 	var genericerror error
 	genericerror = nil
 	ret := make([]xml2triples.SifResponse, 0)
+	triplesSent = 0
+	objs := 0
 
-	go sendTriplesAsync(triplech, done) // send out triples gathered in main goroutine to REST, in batches
+	go sendTriplesAsync(triplech, "SIF", done) // send out triples gathered in main goroutine to REST, in batches
 	go func() {
 		for e := range refidch {
 			ret = append(ret, e)
@@ -186,6 +200,7 @@ func sendReaderToDataStore(r io.Reader) ([]xml2triples.SifResponse, error, error
 			if requestMany(se.Name.Local) {
 				continue
 			}
+			objs++
 
 			err := decoder.Skip()
 			if err != nil {
@@ -209,7 +224,18 @@ func sendReaderToDataStore(r io.Reader) ([]xml2triples.SifResponse, error, error
 			copy(b, string(bodyBytes))
 
 			batchcount++
-			go xml2triples.StoreXMLasDBtriplesAsync(b, "SIF", triplech, refidch, ch)
+			switch verb {
+			case POST:
+				go xml2triples.StoreXMLasDBtriplesAsync(b, mustUseAdvisory, "SIF", triplech, refidch, ch)
+			case PUT:
+				go xml2triples.UpdateFullXMLasDBtriplesAsync(b, "SIF", triplech, refidch, ch)
+			case PATCH:
+				go xml2triples.UpdatePartialXMLasDBtriplesAsync(b, "SIF", triplech, refidch, ch)
+			case DELETE:
+				go xml2triples.DeleteTriplesForRefIdAsync(b, "SIF", triplech, refidch, ch)
+			default:
+				go xml2triples.StoreXMLasDBtriplesAsync(b, mustUseAdvisory, "SIF", triplech, refidch, ch)
+			}
 
 			// And now the buffer's up to date.
 			bufferOffset = tokenStartOffset
@@ -238,6 +264,7 @@ func sendReaderToDataStore(r io.Reader) ([]xml2triples.SifResponse, error, error
 
 	<-ret_done
 	<-done
+	log.Printf("sent %d triples in %d objects\n", triplesSent, objs)
 	return ret, sendtripleerror, genericerror
 }
 
@@ -274,6 +301,13 @@ func mustUseAdvisory(c echo.Context) bool {
 	h := c.Request().Header
 	_, ok := h["Mustuseadvisory"]
 	return ok
+}
+
+// is the methodOverride field in the request set to DELETE?
+func deleteMany(c echo.Context) bool {
+	h := c.Request().Header
+	v, ok := h["methodOverride"]
+	return ok && len(v) > 0 && v[0] == "DELETE"
 }
 
 // query REST for the XML corresponding to a set of RefIDs. If content has been requested in JSON,
@@ -337,6 +371,40 @@ func createResponse(responses []xml2triples.SifResponse) string {
 	return bld.String()
 }
 
+// formulate SIF Update Response to PUT MANY
+func updateResponse(responses []xml2triples.SifResponse) string {
+	var bld strings.Builder
+	bld.WriteString("<updateResponse>\n  <updates>\n")
+	for _, r := range responses {
+		if r.Error == nil {
+			bld.WriteString(fmt.Sprintf("    <update id=\"%s\" statusCode = \"200\"/>\n", r.RefId))
+		} else {
+			bld.WriteString(fmt.Sprintf("    <update statusCode = \"404\">\n"))
+			bld.WriteString(fmt.Sprintf("      <error id=\"%s\">\n", strings.ToUpper(uuid.NewV4().String())))
+			bld.WriteString(fmt.Sprintf("        <code>404</code>\n        <scope>Not Found</scope>\n        <message>Object with that RefId not found</message>\n      </error>\n    </update>\n"))
+		}
+	}
+	bld.WriteString("  <updates>\n<updateResponse>\n")
+	return bld.String()
+}
+
+// formulate SIF Update Response to DELETE MANY
+func deleteResponse(responses []xml2triples.SifResponse) string {
+	var bld strings.Builder
+	bld.WriteString("<deleteResponse>\n  <deletes>\n")
+	for _, r := range responses {
+		if r.Error == nil {
+			bld.WriteString(fmt.Sprintf("    <delete id=\"%s\" statusCode = \"200\"/>\n", r.RefId))
+		} else {
+			bld.WriteString(fmt.Sprintf("    <delete statusCode = \"404\">\n"))
+			bld.WriteString(fmt.Sprintf("      <error id=\"%s\">\n", strings.ToUpper(uuid.NewV4().String())))
+			bld.WriteString(fmt.Sprintf("        <code>404</code>\n        <scope>Not Found</scope>\n        <message>Object with that RefId not found</message>\n      </error>\n    </delete>\n"))
+		}
+	}
+	bld.WriteString("  <deletes>\n<deleteResponse>\n")
+	return bld.String()
+}
+
 func Webserver() {
 	var err error
 	e := echo.New()
@@ -345,212 +413,6 @@ func Webserver() {
 	e.Use(middleware.Recover())
 	uuid.Init()
 	directoryWatcher()
-
-	e.POST("/sifxml/:object", func(c echo.Context) error {
-		var bodyBytes []byte
-		if c.Request().Body != nil {
-			if bodyBytes, err = ioutil.ReadAll(c.Request().Body); err != nil {
-				c.String(http.StatusBadRequest, err.Error())
-				return err
-			}
-
-			if requestMany(c.Param("object")) {
-				// we don't validate the object name against each element
-				// we don't validate the well-formedness of the payload in advance
-				ret, _, genericerr := sendReaderToDataStore(bytes.NewReader(bodyBytes))
-				if genericerr != nil {
-					c.String(http.StatusBadRequest, genericerr.Error())
-					return err
-				}
-				c.Response().Header().Set("Content-Type", "application/xml")
-				c.String(http.StatusOK, createResponse(ret))
-			} else {
-				object := strings.TrimSuffix(c.Param("object"), "s")
-				objname := xmlobject.FindSubmatch(bodyBytes)
-				if objname == nil {
-					err = fmt.Errorf("No XML root element")
-					c.String(http.StatusBadRequest, err.Error())
-					return err
-				}
-				if string(objname[1]) != object {
-					err = fmt.Errorf("%s does not match expected XML root element %s", objname[1], object)
-					c.String(http.StatusBadRequest, err.Error())
-					return err
-				}
-				var guid string
-				var triples []*xml2triples.Triple
-				if guid, triples, err = xml2triples.StoreXMLasDBtriples(bodyBytes, mustUseAdvisory(c), "SIF"); err != nil {
-					c.String(http.StatusUnprocessableEntity, err.Error())
-					return err
-				}
-				ch := make(chan struct{})
-				go xml2triples.SendTriplesAsync(triples, ch)
-				<-ch
-				x, err := xml2triples.DbTriples2XML(guid, "SIF", true)
-				if err != nil {
-					c.String(http.StatusUnprocessableEntity, err.Error())
-					return err
-				}
-				c.Response().Header().Set("Content-Type", "application/xml")
-				c.String(http.StatusOK, string(x))
-			}
-		}
-		return nil
-	})
-
-	e.PUT("/sifxml/:object/:refid", func(c echo.Context) error {
-		refid := c.Param("refid")
-		object := c.Param("object")
-		var bodyBytes []byte
-		if c.Request().Body != nil {
-			if bodyBytes, err = ioutil.ReadAll(c.Request().Body); err != nil {
-				c.String(http.StatusBadRequest, err.Error())
-				return err
-			}
-			if requestMany(object) {
-				// TODO: implement PUT MANY
-				err = fmt.Errorf("Multiple object payloads not yet implemented")
-				c.String(http.StatusBadRequest, err.Error())
-				return err
-			} else {
-				objname := xmlobject.FindSubmatch(bodyBytes)
-				if objname == nil {
-					err = fmt.Errorf("No XML root element")
-					c.String(http.StatusBadRequest, err.Error())
-					return err
-				}
-				if string(objname[1]) != object {
-					err = fmt.Errorf("%s does not match expected XML root element %s", objname[1], object)
-					c.String(http.StatusBadRequest, err.Error())
-					return err
-				}
-				var err error
-				full := full_object_replace(c)
-				if full {
-					if err = xml2triples.UpdateFullXMLasDBtriples(bodyBytes, refid, "SIF"); err != nil {
-						c.String(http.StatusUnprocessableEntity, err.Error())
-						return err
-					}
-				} else {
-					if err = xml2triples.UpdatePartialXMLasDBtriples(bodyBytes, refid, "SIF"); err != nil {
-						c.String(http.StatusUnprocessableEntity, err.Error())
-						return err
-					}
-				}
-				x, err := xml2triples.DbTriples2XML(refid, "SIF", true)
-				if err != nil {
-					c.String(http.StatusUnprocessableEntity, err.Error())
-					return err
-				}
-				c.Response().Header().Set("Content-Type", "application/xml")
-				c.String(http.StatusOK, string(x))
-			}
-		}
-		return nil
-	})
-
-	e.GET("/sifxml/:object", func(c echo.Context) error {
-		object := strings.TrimSuffix(c.Param("object"), "s")
-		objIDs, err := xml2triples.GetAllXMLByObject(object, "SIF")
-		if err != nil {
-			c.String(http.StatusBadRequest, err.Error())
-			return err
-		}
-		//log.Printf("GETMANY: %+v\n", objIDs)
-		for _, refid := range objIDs {
-			_, err := xml2triples.DbTriples2XML(refid, "SIF", false)
-			if err != nil {
-				log.Println(err.Error())
-			}
-		}
-		pr, pw := io.Pipe()
-		json := headerJSON(c)
-		go func() {
-			defer pw.Close()
-			if json {
-				pw.Write([]byte("["))
-			}
-			for i, refid := range objIDs {
-				x, err := xml2triples.DbTriples2XML(refid, "SIF", false)
-				if err != nil {
-					log.Println(err.Error())
-					c.String(http.StatusInternalServerError, err.Error())
-					pw.CloseWithError(err)
-					return
-				} else {
-					if json {
-						x1, err := xml2triples.XMLtoJSON(x)
-						if err != nil {
-							log.Println(err.Error())
-							c.String(http.StatusInternalServerError, err.Error())
-							pw.CloseWithError(err)
-							return
-						}
-						if i > 0 {
-							pw.Write([]byte(","))
-						}
-						x = x1
-					}
-					io.Copy(pw, bytes.NewBuffer(x))
-				}
-			}
-			if json {
-				pw.Write([]byte("]"))
-			}
-		}()
-		if json {
-			c.Stream(http.StatusOK, "application/json", pr)
-		} else {
-			c.Stream(http.StatusOK, "application/xml", pr)
-		}
-		pr.Close()
-		return err
-	})
-
-	e.DELETE("/sifxml/:object/:refid", func(c echo.Context) error {
-		// we don't check the type of object we're deleting
-		refid := c.Param("refid")
-		if requestMany(c.Param("object")) {
-			// TODO: implement DELETE MANY
-			err = fmt.Errorf("Multiple object payloads not yet implemented")
-			c.String(http.StatusBadRequest, err.Error())
-			return err
-		} else {
-			err := xml2triples.DeleteTriplesForRefId(refid, "SIF")
-			if err != nil {
-				c.String(http.StatusBadRequest, err.Error())
-				return err
-			}
-			c.Response().Header().Set("Content-Type", "application/xml")
-			c.String(http.StatusOK, string(refid))
-		}
-		return nil
-	})
-
-	e.GET("/sifxml/:object/:refid", func(c echo.Context) error {
-		//object := c.Param("object")
-		refid := c.Param("refid")
-		json := headerJSON(c)
-		x, err := xml2triples.DbTriples2XML(refid, "SIF", true)
-		if err != nil {
-			c.String(http.StatusBadRequest, err.Error())
-			return err
-		}
-		if json {
-			x1, err := xml2triples.XMLtoJSON(x)
-			if err != nil {
-				log.Println(err.Error())
-				c.String(http.StatusInternalServerError, err.Error())
-				return err
-			}
-			x = x1
-			c.Response().Header().Set("Content-Type", "application/json")
-		} else {
-			c.Response().Header().Set("Content-Type", "application/xml")
-		}
-		c.String(http.StatusOK, string(x))
-		return nil
-	})
 
 	// NSW Digital Classroom adhoc queries
 	e.GET("/sifxml/kla2student", func(c echo.Context) error {
@@ -610,6 +472,251 @@ func Webserver() {
 			return err
 		}
 		c.String(http.StatusOK, buffer.String())
+		return nil
+	})
+
+	// POST ONE, e.g. StaffPersonals/StaffPersonal
+	e.POST("/sifxml/:objects/:refid", func(c echo.Context) error {
+		var bodyBytes []byte
+		if c.Request().Body != nil {
+			if bodyBytes, err = ioutil.ReadAll(c.Request().Body); err != nil {
+				c.String(http.StatusBadRequest, err.Error())
+				return err
+			}
+			objects := c.Param("objects")
+			// https://github.com/labstack/echo/issues/1139 :
+			object := c.Param("refid")
+			if object != strings.TrimSuffix(objects, "s") {
+				err = errors.New("POST ONE request path is malformed")
+				c.String(http.StatusBadRequest, err.Error())
+				return err
+			}
+
+			objname := xmlobject.FindSubmatch(bodyBytes)
+			if objname == nil {
+				err = fmt.Errorf("No XML root element")
+				c.String(http.StatusBadRequest, err.Error())
+				return err
+			}
+			if string(objname[1]) != object {
+				err = fmt.Errorf("%s does not match expected XML root element %s", objname[1], object)
+				c.String(http.StatusBadRequest, err.Error())
+				return err
+			}
+			var guid string
+			var triples []*xml2triples.Triple
+			if guid, triples, err = xml2triples.StoreXMLasDBtriples(bodyBytes, mustUseAdvisory(c), "SIF"); err != nil {
+				c.String(http.StatusUnprocessableEntity, err.Error())
+				return err
+			}
+			ch := make(chan struct{})
+			go xml2triples.SendTriplesAsync(triples, "SIF", ch)
+			<-ch
+			x, err := xml2triples.DbTriples2XML(guid, "SIF", true)
+			if err != nil {
+				c.String(http.StatusUnprocessableEntity, err.Error())
+				return err
+			}
+			c.Response().Header().Set("Content-Type", "application/xml")
+			c.String(http.StatusCreated, string(x))
+		}
+		return nil
+	})
+
+	// is interpreted as POST MANY, but will process single object payload
+	e.POST("/sifxml/:objects", func(c echo.Context) error {
+		var bodyBytes []byte
+		if c.Request().Body != nil {
+			if bodyBytes, err = ioutil.ReadAll(c.Request().Body); err != nil {
+				c.String(http.StatusBadRequest, err.Error())
+				return err
+			}
+			// we don't validate the object name against each element
+			// we don't validate the well-formedness of the payload in advance
+			ret, _, genericerr := sendReaderToDataStore(bytes.NewReader(bodyBytes), mustUseAdvisory(c), POST)
+			if genericerr != nil {
+				c.String(http.StatusBadRequest, genericerr.Error())
+				return err
+			}
+			c.Response().Header().Set("Content-Type", "application/xml")
+			c.String(http.StatusOK, createResponse(ret))
+		}
+		return nil
+	})
+
+	// PUT ONE
+	e.PUT("/sifxml/:objects/:refid", func(c echo.Context) error {
+		refid := c.Param("refid")
+		object := c.Param("objects")
+		var bodyBytes []byte
+		if c.Request().Body != nil {
+			if bodyBytes, err = ioutil.ReadAll(c.Request().Body); err != nil {
+				c.String(http.StatusBadRequest, err.Error())
+				return err
+			}
+			full := full_object_replace(c)
+			objname := xmlobject.FindSubmatch(bodyBytes)
+			if objname == nil {
+				err = fmt.Errorf("No XML root element")
+				c.String(http.StatusBadRequest, err.Error())
+				return err
+			}
+			if string(objname[1]) != object {
+				err = fmt.Errorf("%s does not match expected XML root element %s", objname[1], object)
+				c.String(http.StatusBadRequest, err.Error())
+				return err
+			}
+			var err error
+			if full {
+				if err = xml2triples.UpdateFullXMLasDBtriples(bodyBytes, refid, "SIF"); err != nil {
+					c.String(http.StatusUnprocessableEntity, err.Error())
+					return err
+				}
+			} else {
+				if err = xml2triples.UpdatePartialXMLasDBtriples(bodyBytes, refid, "SIF"); err != nil {
+					c.String(http.StatusUnprocessableEntity, err.Error())
+					return err
+				}
+			}
+			x, err := xml2triples.DbTriples2XML(refid, "SIF", true)
+			if err != nil {
+				c.String(http.StatusUnprocessableEntity, err.Error())
+				return err
+			}
+			c.Response().Header().Set("Content-Type", "application/xml")
+			c.String(http.StatusOK, string(x))
+		}
+		return nil
+	})
+
+	// PUT MANY, DELETE MANY
+	e.PUT("/sifxml/:objects", func(c echo.Context) error {
+		// object := c.Param("object")
+		var bodyBytes []byte
+		if c.Request().Body != nil {
+			if bodyBytes, err = ioutil.ReadAll(c.Request().Body); err != nil {
+				c.String(http.StatusBadRequest, err.Error())
+				return err
+			}
+			full := full_object_replace(c)
+			// we don't validate the object name against each element
+			// we don't validate the well-formedness of the payload in advance
+			verb := PATCH
+			if full {
+				verb = PUT
+			} else if deleteMany(c) {
+				verb = DELETE
+			}
+			ret, _, genericerr := sendReaderToDataStore(bytes.NewReader(bodyBytes), true, verb)
+			if genericerr != nil {
+				c.String(http.StatusBadRequest, genericerr.Error())
+				return err
+			}
+			c.Response().Header().Set("Content-Type", "application/xml")
+			if deleteMany(c) {
+				c.String(http.StatusOK, deleteResponse(ret))
+			} else {
+				c.String(http.StatusOK, updateResponse(ret))
+			}
+		}
+		return nil
+	})
+
+	// GET ONE
+	e.GET("/sifxml/:objects/:refid", func(c echo.Context) error {
+		refid := c.Param("refid")
+		json := headerJSON(c)
+		x, err := xml2triples.DbTriples2XML(refid, "SIF", true)
+		if err != nil {
+			c.String(http.StatusBadRequest, err.Error())
+			return err
+		}
+		if json {
+			x1, err := xml2triples.XMLtoJSON(x)
+			if err != nil {
+				log.Println(err.Error())
+				c.String(http.StatusInternalServerError, err.Error())
+				return err
+			}
+			x = x1
+			c.Response().Header().Set("Content-Type", "application/json")
+		} else {
+			c.Response().Header().Set("Content-Type", "application/xml")
+		}
+		c.String(http.StatusOK, string(x))
+		return nil
+	})
+
+	// GET MANY
+	e.GET("/sifxml/:objects", func(c echo.Context) error {
+		object := strings.TrimSuffix(c.Param("objects"), "s")
+		objIDs, err := xml2triples.GetAllXMLByObject(object, "SIF")
+		if err != nil {
+			c.String(http.StatusBadRequest, err.Error())
+			return err
+		}
+		//log.Printf("GETMANY: %+v\n", objIDs)
+		for _, refid := range objIDs {
+			_, err := xml2triples.DbTriples2XML(refid, "SIF", false)
+			if err != nil {
+				log.Println(err.Error())
+			}
+		}
+		pr, pw := io.Pipe()
+		json := headerJSON(c)
+		go func() {
+			defer pw.Close()
+			if json {
+				pw.Write([]byte("["))
+			}
+			for i, refid := range objIDs {
+				x, err := xml2triples.DbTriples2XML(refid, "SIF", false)
+				if err != nil {
+					log.Println(err.Error())
+					c.String(http.StatusInternalServerError, err.Error())
+					pw.CloseWithError(err)
+					return
+				} else {
+					if json {
+						x1, err := xml2triples.XMLtoJSON(x)
+						if err != nil {
+							log.Println(err.Error())
+							c.String(http.StatusInternalServerError, err.Error())
+							pw.CloseWithError(err)
+							return
+						}
+						if i > 0 {
+							pw.Write([]byte(","))
+						}
+						x = x1
+					}
+					io.Copy(pw, bytes.NewBuffer(x))
+				}
+			}
+			if json {
+				pw.Write([]byte("]"))
+			}
+		}()
+		if json {
+			c.Stream(http.StatusOK, "application/json", pr)
+		} else {
+			c.Stream(http.StatusOK, "application/xml", pr)
+		}
+		pr.Close()
+		return err
+	})
+
+	// DELETE ONE
+	e.DELETE("/sifxml/:objects/:refid", func(c echo.Context) error {
+		// we don't check the type of object we're deleting
+		refid := c.Param("refid")
+		err := xml2triples.DeleteTriplesForRefId(refid, "SIF")
+		if err != nil {
+			c.String(http.StatusBadRequest, err.Error())
+			return err
+		}
+		c.Response().Header().Set("Content-Type", "application/xml")
+		c.String(http.StatusOK, string(refid))
 		return nil
 	})
 

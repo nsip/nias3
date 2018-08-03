@@ -5,6 +5,8 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"encoding/xml"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -108,8 +110,9 @@ func send_triple(triple Triple) {
 }
 */
 
+// TODO restrict query to a context
 // always limitch <- struct{}{} before calling
-func send_triples(triples []*Triple) {
+func send_triples(triples []*Triple, context string) {
 	if len(triples) == 0 {
 		<-limitch
 		return
@@ -132,9 +135,9 @@ func send_triples(triples []*Triple) {
 	defer resp.Body.Close()
 }
 
-func SendTriplesAsync(triples []*Triple, done chan<- struct{}) {
+func SendTriplesAsync(triples []*Triple, context string, done chan<- struct{}) {
 	limitch <- struct{}{}
-	send_triples(triples)
+	send_triples(triples, context)
 	done <- struct{}{}
 }
 
@@ -252,8 +255,53 @@ func Kla2timetablesubject(kla string, yrlvl string) []string {
 	return ret
 }
 
-// TODO restrict query to a context
 func DeleteTriplesForRefId(refid string, context string) error {
+	triples, err := makeDeleteTriplesForRefId(refid, context)
+	if err != nil {
+		return err
+	}
+	send_triples(triples, context)
+	return nil
+}
+
+type DeleteRequest struct {
+	XMLName            xml.Name           `xml:"deleteRequest"`
+	DeletesRequestElem DeletesRequestElem `xml:"deletes"`
+}
+
+type DeletesRequestElem struct {
+	Delete []DeleteRequestElem `xml:"delete"`
+}
+
+type DeleteRequestElem struct {
+	Id string `xml:"id,attr"`
+}
+
+// processes deleteRequest object
+func DeleteTriplesForRefIdAsync(s []byte, context string, outch chan<- *Triple, errch chan<- SifResponse, ch chan<- struct{}) {
+	v := DeleteRequest{}
+	err := xml.Unmarshal(s, &v)
+	if err != nil {
+		errch <- SifResponse{RefId: "", Error: errors.New("Request Object malformed")}
+		ch <- struct{}{}
+		return
+	}
+	for _, del := range v.DeletesRequestElem.Delete {
+		refid := del.Id
+		triples, err := makeDeleteTriplesForRefId(refid, context)
+		if err != nil {
+			errch <- SifResponse{RefId: "", Error: err}
+		} else {
+			for _, t := range triples {
+				outch <- t
+			}
+			errch <- SifResponse{AdvisoryId: refid, RefId: refid, Error: nil}
+		}
+	}
+	ch <- struct{}{}
+}
+
+func makeDeleteTriplesForRefId(refid string, context string) ([]*Triple, error) {
 	//log.Println("DeleteTriplesForRefId")
 	triples := getTuples(fmt.Sprintf("s:%s ", strconv.Quote(fmt.Sprintf("%v", refid))), context)
 	//log.Printf("%+v\n", triples)
@@ -261,8 +309,7 @@ func DeleteTriplesForRefId(refid string, context string) error {
 		triples[i].Object = ""
 	}
 	limitch <- struct{}{}
-	send_triples(triples)
-	return nil
+	return triples, nil
 }
 
 func UpdateFullXMLasDBtriples(s []byte, refid string, context string) error {
@@ -276,8 +323,49 @@ func UpdateFullXMLasDBtriples(s []byte, refid string, context string) error {
 		triples = append(triples, &Triple{Subject: fmt.Sprintf("%v", refid), Predicate: n.Path, Object: fmt.Sprintf("%v", n.Value), Context: context})
 	}
 	limitch <- struct{}{}
-	send_triples(triples)
+	send_triples(triples, context)
 	return nil
+}
+
+func UpdateFullXMLasDBtriplesAsync(s []byte, context string, outch chan<- *Triple, errch chan<- SifResponse, ch chan<- struct{}) {
+	haskeych := make(chan bool)
+	m, err := mxj.NewMapXml(s)
+	if err != nil {
+		errch <- SifResponse{RefId: "", Error: err}
+		ch <- struct{}{}
+		return
+	}
+	advisoryIdRaw, err := m.ValueForPath("*.-RefId")
+	var refid string
+	if err != nil {
+		errch <- SifResponse{RefId: "", Error: err}
+		ch <- struct{}{}
+		return
+	} else {
+		limitch <- struct{}{}
+		refid = advisoryIdRaw.(string)
+		go hasKeyAsync(fmt.Sprintf("s:%s p:", strconv.Quote(refid)), context, haskeych)
+	}
+	triples, err := makeDeleteTriplesForRefId(refid, context)
+	if err != nil {
+		errch <- SifResponse{RefId: "", Error: err}
+		ch <- struct{}{}
+		return
+	}
+	for _, n := range m.LeafNodes() {
+		triples = append(triples, &Triple{Subject: strconv.Quote(refid), Predicate: n.Path, Object: fmt.Sprintf("%v", n.Value), Context: context})
+	}
+	refIdClash := <-haskeych
+	if !refIdClash {
+		errch <- SifResponse{RefId: refid, Error: fmt.Errorf("RefID %v not found\n", refid)}
+	} else {
+		for _, t := range triples {
+			outch <- t
+		}
+		errch <- SifResponse{AdvisoryId: refid, RefId: refid, Error: nil}
+	}
+	ch <- struct{}{}
+
 }
 
 // does not delete anything, including extra list entries: will not shrink list of 2 to list of 1
@@ -295,14 +383,50 @@ func UpdatePartialXMLasDBtriples(s []byte, refid string, context string) error {
 		all_triples = append(all_triples, triples...)
 	}
 	limitch <- struct{}{}
-	send_triples(all_triples)
+	send_triples(all_triples, context)
 	all_triples = make([]*Triple, 0)
 	for _, n := range m.LeafNodes() {
 		all_triples = append(all_triples, &Triple{Subject: fmt.Sprintf("%v", refid), Predicate: n.Path, Object: fmt.Sprintf("%v", n.Value), Context: context})
 	}
 	limitch <- struct{}{}
-	send_triples(all_triples)
+	send_triples(all_triples, context)
 	return nil
+}
+
+func UpdatePartialXMLasDBtriplesAsync(s []byte, context string, outch chan<- *Triple, errch chan<- SifResponse, ch chan<- struct{}) {
+	haskeych := make(chan bool)
+	m, err := mxj.NewMapXml(s)
+	if err != nil {
+		errch <- SifResponse{RefId: "", Error: err}
+		ch <- struct{}{}
+		return
+	}
+	advisoryIdRaw, err := m.ValueForPath("*.-RefId")
+	var refid string
+	if err != nil {
+		errch <- SifResponse{RefId: "", Error: err}
+		ch <- struct{}{}
+		return
+	} else {
+		limitch <- struct{}{}
+		refid = advisoryIdRaw.(string)
+		go hasKeyAsync(fmt.Sprintf("s:%s p:", strconv.Quote(refid)), context, haskeych)
+	}
+	triples := make([]*Triple, 0)
+	for _, n := range m.LeafNodes() {
+		triples = append(triples, &Triple{Subject: strconv.Quote(refid), Predicate: n.Path, Object: fmt.Sprintf("%v", n.Value), Context: context})
+	}
+	refIdClash := <-haskeych
+	if !refIdClash {
+		errch <- SifResponse{RefId: refid, Error: fmt.Errorf("RefID %v not found\n", refid)}
+	} else {
+		for _, t := range triples {
+			outch <- t
+		}
+		errch <- SifResponse{AdvisoryId: refid, RefId: refid, Error: nil}
+	}
+	ch <- struct{}{}
+
 }
 
 type Triple struct {
@@ -356,12 +480,12 @@ type SifResponse struct {
 }
 
 // Async version of above, presupposes mustUseAdvisory = true
-func StoreXMLasDBtriplesAsync(s []byte, context string, outch chan<- *Triple, errch chan<- SifResponse, ch chan<- struct{}) {
+func StoreXMLasDBtriplesAsync(s []byte, mustUseAdvisory bool, context string, outch chan<- *Triple, errch chan<- SifResponse, ch chan<- struct{}) {
 	haskeych := make(chan bool)
-	mustUseAdvisory := true
 	m, err := mxj.NewMapXml(s)
 	if err != nil {
 		errch <- SifResponse{RefId: "", Error: err}
+		ch <- struct{}{}
 		return
 	}
 	advisoryIdRaw, err := m.ValueForPath("*.-RefId")
@@ -424,12 +548,12 @@ func GetAllXMLByObject(object string, context string) ([]string, error) {
 
 func DbTriples2XML(refid string, context string, stripempty bool) ([]byte, error) {
 	triples := getTuples(fmt.Sprintf("s:%s p:", strconv.Quote(fmt.Sprintf("%v", refid))), context)
+	log.Printf("%+v\n", triples)
 
 	json := ""
 	var err error
 	for _, t := range triples {
-		//log.Printf("%s %s %s\n", t.S, t.P, t.O)
-		//log.Printf("%s %s %s\n", t.S, mxj2sjsonPath(t.P), t.O)
+		log.Printf("%s %s %s\n", t.Subject, mxj2sjsonPath(t.Predicate), t.Object)
 		json, err = sjson.Set(json, mxj2sjsonPath(t.Predicate), t.Object)
 		if err != nil {
 			return nil, err
