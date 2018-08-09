@@ -17,7 +17,7 @@ NIAS uses the following core concepts:
 
 NIAS has gone through the following implementation stages:
 * [NIAS](https://github.com/nsip/nias) (Oct 2015), implemented in Ruby with Apache Kafka data streaming, Redis as graph database, LMDS as data store. Initial proof of concept; stream chaining, filtering, format conversion, multiple standards in graph. Simple Analytics front-end.
-* [NIAS2](https://github.com/nsip/nias2) (Jul 2016), implemented in Go with [NATS Streaming](https://github.com/nats-io/go-nats-streaming), [https://github.com/siddontang/ledisdb](Ledis) as graph database and data store. Optimised for performance; intended for desktop deployment. Specific to NAPLAN use cases.
+* [NIAS2](https://github.com/nsip/nias2) (Jul 2016), implemented in Go with [NATS Streaming](https://github.com/nats-io/go-nats-streaming), [Ledis](https://github.com/siddontang/ledisdb) as graph database and data store. Optimised for performance; intended for desktop deployment. Specific to NAPLAN use cases.
 * [NIAS3](https://github.com/nsip/nias3), [NIAS3-Engine](https://github.com/nsip/nias3-engine) (Mar 2018), implemented in Go with [NATS Streaming](https://github.com/nats-io/go-nats-streaming), [Bolt](https://github.com/boltdb/bolt) as Hexastore graph database. Move to triples as storage unit, peer-to-peer synchronisation of data, digital signing of data, encryption in transit, multiple contexts of data.
 
 ## Installation
@@ -38,7 +38,7 @@ The NIAS3 Engine needs to process a large number of open files, since it fields 
 
 ## NIAS3 Functionality
 
-See https://github.com/nsip/nias3/wiki/Design-specification for the intended functionality of NIAS3, and https://github.com/nsip/nias3/wiki/Current-Design for the implementation to date.
+See [Design Specification](https://github.com/nsip/nias3/wiki/Design-specification) for the intended functionality of NIAS3, and [Current Design](https://github.com/nsip/nias3/wiki/Current-Design) for the implementation to date.
 
 ### Functionality implemented to date
 
