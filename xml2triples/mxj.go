@@ -26,14 +26,17 @@ var conf = config.LoadConfig()
 var baseUrl string
 var client = initClient()
 
-const HTTPTHREADS = 100
-
+// channel to throttle simultaneous http posts
 var limitch chan struct{}
 
+// max number of simultaneous http posts allowed
+const HTTPTHREADS = 100
+
 // https://forfuncsake.github.io/post/2017/08/trust-extra-ca-cert-in-go-app/
-// Permit self-signed certificate out of Nias3Engine
+// Create an HTTP client to pass on messages to Nias3Engine
+// Permit self-signed certificate out of Nias3Engine for HTTPS
 func initClient() *http.Client {
-	limitch = make(chan struct{}, HTTPTHREADS) // throttle simultaneous http posts
+	limitch = make(chan struct{}, HTTPTHREADS)
 	localCertFile := conf.N3EngineTLSCert
 	if len(localCertFile) == 0 {
 		log.Println("Using HTTP")
@@ -63,23 +66,24 @@ func initClient() *http.Client {
 	return &http.Client{Transport: tr}
 }
 
+// Change MXJ JSON tags to the JSON XML tags used in our internal SIF XML representation
 func changeJSONTags(j string) string {
 	return strings.Replace(j, `"#text":`, `"Value":`, -1)
 }
 
+// Convert an MXJ map, as retrieved from tuples, into a byte encoding of a SIF XML object.
+// If stripempty, make an effort to remove empty tags in the XML.
 func Map2SIFXML(m mxj.Map, stripempty bool) ([]byte, error) {
 	root, err := m.Root()
 	if err != nil {
 		return nil, err
 	}
-	//log.Println(root)
+	// The root element is the name of the object; we process beneath it
 	m02 := m[root].(map[string]interface{})
-	// log.Printf("m02\n%+v\n", m02)
 	j, err := json.Marshal(m02)
 	if err != nil {
 		return nil, err
 	}
-	// log.Println(string(j))
 	ret, err := Root2SIF(root, []byte(changeJSONTags(string(j))))
 	if err != nil {
 		return nil, err
@@ -91,28 +95,16 @@ func Map2SIFXML(m mxj.Map, stripempty bool) ([]byte, error) {
 	return ret, nil
 }
 
-/*
-func send_triple(triple Triple) {
-	json, err := json.Marshal(triple)
-	if err != nil {
-		panic(err)
-	}
-	//log.Println(string(json))
-	req, err := http.NewRequest("POST", baseUrl+"/tuple", bytes.NewBuffer(json))
-	if err != nil {
-		panic(err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := client.Do(req)
-	if err != nil {
-		panic(err)
-	}
-	defer resp.Body.Close()
+type Triple struct {
+	Subject   string
+	Object    string
+	Predicate string
+	Context   string
 }
-*/
 
 // TODO restrict query to a context
-// always limitch <- struct{}{} before calling
+// Send a slice of triples synchronously to Nias3Engine
+// Always add limitch <- struct{}{} before calling
 func send_triples(triples []*Triple, context string) {
 	if len(triples) == 0 {
 		<-limitch
@@ -136,13 +128,14 @@ func send_triples(triples []*Triple, context string) {
 	defer resp.Body.Close()
 }
 
+// Send a slice of triples asynchronously to Nias3Engine
 func SendTriplesAsync(triples []*Triple, context string, done chan<- struct{}) {
 	limitch <- struct{}{}
 	send_triples(triples, context)
 	done <- struct{}{}
 }
 
-// check if key prefix is on Hexastore
+// Check if S(P(O)) key prefix is on Nias3Engine Hexastore. Adds context prefix to key before checking. Synchronous.
 // TODO restrict query to a context
 func hasKey(keyprefix string, context string) bool {
 	keyprefix1 := fmt.Sprintf("c:%s %s", strconv.Quote(context), keyprefix)
@@ -154,14 +147,13 @@ func hasKey(keyprefix string, context string) bool {
 	if err != nil {
 		panic(err)
 	}
-	//log.Printf("hasKey status: %d\n", resp.StatusCode)
 	return resp.StatusCode == 200
 }
 
-// check if key prefix is on Hexastore; asynchronous
+// Check if S(P(O)) key prefix is on Nias3Engine Hexastore. Adds context prefix to key before checking. Asynchronous.
+// Always add limitch <- struct{}{} before calling
 // TODO restrict query to a context
 func hasKeyAsync(keyprefix string, context string, ch chan<- bool) {
-	//log.Printf("%d\n", len(limitch))
 	keyprefix1 := fmt.Sprintf("c:%s %s", strconv.Quote(context), keyprefix)
 	req, err := http.NewRequest("GET", baseUrl+"/HasKey/"+url.PathEscape(keyprefix1), nil)
 	if err != nil {
@@ -171,13 +163,12 @@ func hasKeyAsync(keyprefix string, context string, ch chan<- bool) {
 	if err != nil {
 		panic(err)
 	}
-	<-limitch // throttle HTTP connections
-	//log.Printf("hasKey status: %d\n", resp.StatusCode)
+	<-limitch
 	ch <- resp.StatusCode == 200
 }
 
-// retrieve tuples from Hexastore matching a key prefix (involving a subset of s: o: p:; the c: prefix
-// will be added here)
+// Retrieve tuples from Hexastore matching a key prefix (involving a subset of s: o: p:; the c: prefix
+// will be added here). Synchronous.
 // TODO restrict query to a context
 func getTuples(keyprefix string, context string) []*Triple {
 	keyprefix1 := fmt.Sprintf("c:%s %s", strconv.Quote(context), keyprefix)
@@ -195,7 +186,22 @@ func getTuples(keyprefix string, context string) []*Triple {
 	return ret
 }
 
-/* NSW DIG hard coded queries */
+// check if there are any entries in the Hexastore with a non-empty object (i.e. not deleted), for the given subject; asynchronous
+func existsRefid(refid string, context string, ch chan<- bool) {
+	tuples := getTuples(fmt.Sprintf("s:%s o:", strconv.Quote(refid)), context)
+	<-limitch
+	ret := false
+	log.Printf("%+v\n", tuples)
+	for _, t := range tuples {
+		if t.Object != "" {
+			ret = true
+			break
+		}
+	}
+	ch <- ret
+}
+
+/* NSW Digital Classroom hard coded query: retrieve students studying KLA (key learning area) in given year level */
 func Kla2student(kla string, yrlvl string) []string {
 	req, err := http.NewRequest("GET", baseUrl+"/kla2student?kla="+url.PathEscape(kla)+"&yrlvl="+url.PathEscape(yrlvl), nil)
 	if err != nil {
@@ -211,6 +217,7 @@ func Kla2student(kla string, yrlvl string) []string {
 	return ret
 }
 
+/* NSW Digital Classroom hard coded query: retrieve staff teaching KLA (key learning area) in given year level */
 func Kla2staff(kla string, yrlvl string) []string {
 	req, err := http.NewRequest("GET", baseUrl+"/kla2staff?kla="+url.PathEscape(kla)+"&yrlvl="+url.PathEscape(yrlvl), nil)
 	if err != nil {
@@ -226,6 +233,7 @@ func Kla2staff(kla string, yrlvl string) []string {
 	return ret
 }
 
+/* NSW Digital Classroom hard coded query: retrieve teaching groups about KLA (key learning area) in given year level */
 func Kla2teachinggroup(kla string, yrlvl string) []string {
 	req, err := http.NewRequest("GET", baseUrl+"/kla2teachinggroup?kla="+url.PathEscape(kla)+"&yrlvl="+url.PathEscape(yrlvl), nil)
 	if err != nil {
@@ -241,6 +249,7 @@ func Kla2teachinggroup(kla string, yrlvl string) []string {
 	return ret
 }
 
+/* NSW Digital Classroom hard coded query: retrieve timetable subjects about KLA (key learning area) in given year level */
 func Kla2timetablesubject(kla string, yrlvl string) []string {
 	req, err := http.NewRequest("GET", baseUrl+"/kla2timetablesubject?kla="+url.PathEscape(kla)+"&yrlvl="+url.PathEscape(yrlvl), nil)
 	if err != nil {
@@ -256,6 +265,7 @@ func Kla2timetablesubject(kla string, yrlvl string) []string {
 	return ret
 }
 
+// Delete all triples with given refis as subject; synchronous
 func DeleteTriplesForRefId(refid string, context string) error {
 	triples, err := makeDeleteTriplesForRefId(refid, context)
 	if err != nil {
@@ -279,9 +289,12 @@ type DeleteRequestElem struct {
 }
 
 // processes deleteRequest object
-func DeleteTriplesForRefIdAsync(s []byte, context string, outch chan<- *Triple, errch chan<- SifResponse, ch chan<- struct{}) {
+// Delete all triples with their subject being one of the refids given in the SIF deleteRequest object deleteReq; asynchronous.
+// Outputs SIF responses for each refid to errch
+// Outputs a list of tuples to be sent to Hexastore to outch
+func DeleteTriplesForRefIdAsync(deleteReq []byte, context string, outch chan<- *Triple, errch chan<- SifResponse, ch chan<- struct{}) {
 	v := DeleteRequest{}
-	err := xml.Unmarshal(s, &v)
+	err := xml.Unmarshal(deleteReq, &v)
 	if err != nil {
 		errch <- SifResponse{RefId: "", Error: errors.New("Request Object malformed")}
 		ch <- struct{}{}
@@ -292,6 +305,8 @@ func DeleteTriplesForRefIdAsync(s []byte, context string, outch chan<- *Triple, 
 		triples, err := makeDeleteTriplesForRefId(refid, context)
 		if err != nil {
 			errch <- SifResponse{RefId: "", Error: err}
+		} else if len(triples) == 0 {
+			errch <- SifResponse{RefId: "", Error: errors.New("RefId not found")}
 		} else {
 			for _, t := range triples {
 				outch <- t
@@ -302,35 +317,52 @@ func DeleteTriplesForRefIdAsync(s []byte, context string, outch chan<- *Triple, 
 	ch <- struct{}{}
 }
 
+// Generates the triples to be sent to the Hexastore to realise deletion of the object with the given refid
 func makeDeleteTriplesForRefId(refid string, context string) ([]*Triple, error) {
-	//log.Println("DeleteTriplesForRefId")
 	triples := getTuples(fmt.Sprintf("s:%s ", strconv.Quote(fmt.Sprintf("%v", refid))), context)
-	//log.Printf("%+v\n", triples)
-	for i := range triples {
-		triples[i].Object = ""
+	ret := make([]*Triple, 0)
+	seen := make(map[string]bool)
+	for _, t := range triples {
+		key := fmt.Sprintf("s:%s p:%s", strconv.Quote(t.Subject), strconv.Quote(t.Predicate))
+		if _, ok := seen[key]; !ok {
+			t.Object = "" // tuples are deleted by setting their object to empty
+			ret = append(ret, t)
+			seen[key] = true
+		}
 	}
 	limitch <- struct{}{}
-	return triples, nil
+	return ret, nil
 }
 
-func UpdateFullXMLasDBtriples(s []byte, refid string, context string) error {
-	m, err := mxj.NewMapXml(s)
+// Update an object, with Full Replacement on the Hexastore; synchronous
+// Deletes all tuples for the refid from Hexastore, then creates tuples for the replacement object,
+// and sends them to Hexastore as an ordered set of tuples
+func UpdateFullXMLasDBtriples(object []byte, requested_refid string, context string) error {
+	m, err := mxj.NewMapXml(object)
 	if err != nil {
 		return err
 	}
-	err = DeleteTriplesForRefId(refid, context)
-	triples := make([]*Triple, 0)
+	refid, err := m.ValueForPath("*.-RefId")
+	if err != nil {
+		refid = requested_refid
+	}
+	triples, err := makeDeleteTriplesForRefId(refid.(string), context)
 	for _, n := range m.LeafNodes() {
-		triples = append(triples, &Triple{Subject: fmt.Sprintf("%v", refid), Predicate: n.Path, Object: fmt.Sprintf("%v", n.Value), Context: context})
+		triples = append(triples, &Triple{Subject: refid.(string), Predicate: n.Path, Object: fmt.Sprintf("%v", n.Value), Context: context})
 	}
 	limitch <- struct{}{}
 	send_triples(triples, context)
 	return nil
 }
 
-func UpdateFullXMLasDBtriplesAsync(s []byte, context string, outch chan<- *Triple, errch chan<- SifResponse, ch chan<- struct{}) {
+// Update an object, with Full Replacement on the Hexastore; asynchronous
+// Deletes all tuples for the refid from Hexastore, then creates tuples for the replacement object,
+// and sends them to Hexastore as an ordered set of tuples
+// Outputs SIF responses for each refid to errch
+// Outputs a list of tuples to be sent to Hexastore to outch
+func UpdateFullXMLasDBtriplesAsync(object []byte, context string, outch chan<- *Triple, errch chan<- SifResponse, ch chan<- struct{}) {
 	haskeych := make(chan bool)
-	m, err := mxj.NewMapXml(s)
+	m, err := mxj.NewMapXml(object)
 	if err != nil {
 		errch <- SifResponse{RefId: "", Error: err}
 		ch <- struct{}{}
@@ -345,7 +377,7 @@ func UpdateFullXMLasDBtriplesAsync(s []byte, context string, outch chan<- *Tripl
 	} else {
 		limitch <- struct{}{}
 		refid = advisoryIdRaw.(string)
-		go hasKeyAsync(fmt.Sprintf("s:%s p:", strconv.Quote(refid)), context, haskeych)
+		go existsRefid(refid, context, haskeych)
 	}
 	triples, err := makeDeleteTriplesForRefId(refid, context)
 	if err != nil {
@@ -354,7 +386,11 @@ func UpdateFullXMLasDBtriplesAsync(s []byte, context string, outch chan<- *Tripl
 		return
 	}
 	for _, n := range m.LeafNodes() {
-		triples = append(triples, &Triple{Subject: strconv.Quote(refid), Predicate: n.Path, Object: fmt.Sprintf("%v", n.Value), Context: context})
+		triples = append(triples, &Triple{
+			Subject:   strconv.Quote(refid),
+			Predicate: n.Path,
+			Object:    fmt.Sprintf("%v", n.Value),
+			Context:   context})
 	}
 	refIdClash := <-haskeych
 	if !refIdClash {
@@ -369,15 +405,27 @@ func UpdateFullXMLasDBtriplesAsync(s []byte, context string, outch chan<- *Tripl
 
 }
 
-// does not delete anything, including extra list entries: will not shrink list of 2 to list of 1
-func UpdatePartialXMLasDBtriples(s []byte, refid string, context string) error {
-	m, err := mxj.NewMapXml(s)
+// Update an object, with Partial Replacement on the Hexastore; synchronous.
+// Is a brute force patch; deletes then writes to all the subject-predicate instances it finds in the object.
+// Does not otherwise delete anything, including extra list entries:
+// e.g. if a list with two items is patched with a list of one item, it will overwrite the first item in the list,
+// and will leave alone the second.
+func UpdatePartialXMLasDBtriples(object []byte, requested_refid string, context string) error {
+	m, err := mxj.NewMapXml(object)
 	if err != nil {
 		return err
 	}
+	refid, err := m.ValueForPath("*.-RefId")
+	if err != nil {
+		refid = requested_refid
+	}
 	all_triples := make([]*Triple, 0)
+	// delete for only the subject-predicate pairs found in the patch object
 	for _, n := range m.LeafNodes() {
-		triples := getTuples(fmt.Sprintf("s:%s p:%s", strconv.Quote(fmt.Sprintf("%v", refid)), strconv.Quote(fmt.Sprintf("%v", n.Path))), context)
+		triples := getTuples(
+			fmt.Sprintf("s:%s p:%s",
+				strconv.Quote(fmt.Sprintf("%v", refid)), strconv.Quote(fmt.Sprintf("%v", n.Path))),
+			context)
 		for i := range triples {
 			triples[i].Object = ""
 		}
@@ -387,16 +435,27 @@ func UpdatePartialXMLasDBtriples(s []byte, refid string, context string) error {
 	send_triples(all_triples, context)
 	all_triples = make([]*Triple, 0)
 	for _, n := range m.LeafNodes() {
-		all_triples = append(all_triples, &Triple{Subject: fmt.Sprintf("%v", refid), Predicate: n.Path, Object: fmt.Sprintf("%v", n.Value), Context: context})
+		all_triples = append(all_triples, &Triple{
+			Subject:   fmt.Sprintf("%v", refid),
+			Predicate: n.Path,
+			Object:    fmt.Sprintf("%v", n.Value),
+			Context:   context})
 	}
 	limitch <- struct{}{}
 	send_triples(all_triples, context)
 	return nil
 }
 
-func UpdatePartialXMLasDBtriplesAsync(s []byte, context string, outch chan<- *Triple, errch chan<- SifResponse, ch chan<- struct{}) {
+// Update an object, with Partial Replacement on the Hexastore; asynchronous.
+// Is a brute force patch; deletes then writes to all the subject-predicate instances it finds in the object.
+// Does not otherwise delete anything, including extra list entries:
+// e.g. if a list with two items is patched with a list of one item, it will overwrite the first item in the list,
+// and will leave alone the second.
+// Outputs SIF responses for each refid to errch
+// Outputs a list of tuples to be sent to Hexastore to outch
+func UpdatePartialXMLasDBtriplesAsync(object []byte, context string, outch chan<- *Triple, errch chan<- SifResponse, ch chan<- struct{}) {
 	haskeych := make(chan bool)
-	m, err := mxj.NewMapXml(s)
+	m, err := mxj.NewMapXml(object)
 	if err != nil {
 		errch <- SifResponse{RefId: "", Error: err}
 		ch <- struct{}{}
@@ -411,11 +470,16 @@ func UpdatePartialXMLasDBtriplesAsync(s []byte, context string, outch chan<- *Tr
 	} else {
 		limitch <- struct{}{}
 		refid = advisoryIdRaw.(string)
-		go hasKeyAsync(fmt.Sprintf("s:%s p:", strconv.Quote(refid)), context, haskeych)
+		go existsRefid(refid, context, haskeych)
 	}
 	triples := make([]*Triple, 0)
+	// delete for only the subject-predicate pairs found in the patch object
 	for _, n := range m.LeafNodes() {
-		triples = append(triples, &Triple{Subject: strconv.Quote(refid), Predicate: n.Path, Object: fmt.Sprintf("%v", n.Value), Context: context})
+		triples = append(triples, &Triple{
+			Subject:   strconv.Quote(refid),
+			Predicate: n.Path,
+			Object:    fmt.Sprintf("%v", n.Value),
+			Context:   context})
 	}
 	refIdClash := <-haskeych
 	if !refIdClash {
@@ -430,22 +494,16 @@ func UpdatePartialXMLasDBtriplesAsync(s []byte, context string, outch chan<- *Tr
 
 }
 
-type Triple struct {
-	Subject   string
-	Object    string
-	Predicate string
-	Context   string
-}
-
-// nominated refid overrides any refid in the object
-func StoreXMLasDBtriples(s []byte, mustUseAdvisory bool, context string) (string, []*Triple, error) {
+// Store the object on the Hexastore. If mustUseAdvisory is on, use the supplied RefId if available,
+// else raise error; if off, generate new RefId. Synchronous. Return the RefId used, the triples
+// to be posted, and the error.
+func StoreXMLasDBtriples(object []byte, mustUseAdvisory bool, context string) (string, []*Triple, error) {
 	ch := make(chan bool)
 
-	m, err := mxj.NewMapXml(s)
+	m, err := mxj.NewMapXml(object)
 	if err != nil {
 		return "", nil, err
 	}
-	//log.Printf("mustUseAdvisory %v\n", mustUseAdvisory)
 
 	refid, err := m.ValueForPath("*.-RefId")
 	if err != nil {
@@ -455,7 +513,7 @@ func StoreXMLasDBtriples(s []byte, mustUseAdvisory bool, context string) (string
 	} else {
 		if mustUseAdvisory {
 			limitch <- struct{}{}
-			go hasKeyAsync(fmt.Sprintf("s:%s p:", strconv.Quote(fmt.Sprintf("%v", refid))), context, ch)
+			go existsRefid(refid.(string), context, ch)
 		} else {
 			refid = strings.ToUpper(uuid.NewV4().String())
 			m.SetValueForPath(refid, "*.-RefId")
@@ -463,7 +521,11 @@ func StoreXMLasDBtriples(s []byte, mustUseAdvisory bool, context string) (string
 	}
 	triples := make([]*Triple, 0)
 	for _, n := range m.LeafNodes() {
-		triples = append(triples, &Triple{Subject: fmt.Sprintf("%v", refid), Predicate: n.Path, Object: fmt.Sprintf("%v", n.Value), Context: context})
+		triples = append(triples, &Triple{
+			Subject:   fmt.Sprintf("%v", refid),
+			Predicate: n.Path,
+			Object:    fmt.Sprintf("%v", n.Value),
+			Context:   context})
 	}
 	if mustUseAdvisory {
 		refIdClash := <-ch
@@ -474,13 +536,17 @@ func StoreXMLasDBtriples(s []byte, mustUseAdvisory bool, context string) (string
 	return refid.(string), triples, nil
 }
 
+// Response to CRUD action, to be posted back as SIF response for a payload with multiple records.
 type SifResponse struct {
-	AdvisoryId string
-	RefId      string
+	AdvisoryId string // The RefId in the request
+	RefId      string // The RefId of the response object, which may be different
 	Error      error
 }
 
-// Async version of above, presupposes mustUseAdvisory = true
+// Store the object on the Hexastore. If mustUseAdvisory is on, use the supplied RefId if available,
+// else raise error; if off, generate new RefId. Asynchronous.
+// Outputs SIF responses for each refid to errch
+// Outputs a list of tuples to be sent to Hexastore to outch
 func StoreXMLasDBtriplesAsync(s []byte, mustUseAdvisory bool, context string, outch chan<- *Triple, errch chan<- SifResponse, ch chan<- struct{}) {
 	haskeych := make(chan bool)
 	m, err := mxj.NewMapXml(s)
@@ -500,7 +566,7 @@ func StoreXMLasDBtriplesAsync(s []byte, mustUseAdvisory bool, context string, ou
 		advisoryId = advisoryIdRaw.(string)
 		if mustUseAdvisory {
 			refid = advisoryId
-			go hasKeyAsync(fmt.Sprintf("s:%s p:", strconv.Quote(fmt.Sprintf("%v", advisoryId))), context, haskeych)
+			go existsRefid(refid, context, haskeych)
 		} else {
 			refid = strings.ToUpper(uuid.NewV4().String())
 		}
@@ -508,14 +574,18 @@ func StoreXMLasDBtriplesAsync(s []byte, mustUseAdvisory bool, context string, ou
 	m.SetValueForPath(refid, "*.-RefId")
 	triples := make([]*Triple, 0)
 	for _, n := range m.LeafNodes() {
-		triples = append(triples, &Triple{Subject: fmt.Sprintf("%v", refid), Predicate: n.Path, Object: fmt.Sprintf("%v", n.Value), Context: context})
+		triples = append(triples, &Triple{
+			Subject:   fmt.Sprintf("%v", refid),
+			Predicate: n.Path,
+			Object:    fmt.Sprintf("%v", n.Value),
+			Context:   context})
 	}
 	refIdClash := false
 	if mustUseAdvisory {
-		//refIdClash := hasKey(fmt.Sprintf("s:%s p:", strconv.Quote(fmt.Sprintf("%v", refid))), context)
 		refIdClash = <-haskeych
 		if refIdClash {
-			errch <- SifResponse{AdvisoryId: advisoryId, RefId: "", Error: fmt.Errorf("RefID %v already in use\n", refid)}
+			errch <- SifResponse{AdvisoryId: advisoryId, RefId: "",
+				Error: fmt.Errorf("RefID %v already in use\n", refid)}
 		}
 	}
 	if !refIdClash {
@@ -530,51 +600,49 @@ func StoreXMLasDBtriplesAsync(s []byte, mustUseAdvisory bool, context string, ou
 var mxj2sjsonPathRe1 = regexp.MustCompile(`\[(\d+)\]`)
 var mxj2sjsonPathRe2 = regexp.MustCompile(`\.#text$`)
 
+// Convert an MXJ path to a node to an sjson path, using dot notation instead of array, and ".Value" instead of .#text
 func mxj2sjsonPath(p string) string {
 	return mxj2sjsonPathRe1.ReplaceAllString(
 		mxj2sjsonPathRe2.ReplaceAllString(p, ".Value"), ".$1")
 }
 
-// no flow control yet
+// TODO: no flow control yet: may retrieve a massive number of RefIds
+// Retrieve all RefIDs from Hexastore for the given object class. Synchronous
 func GetAllXMLByObject(object string, context string) ([]string, error) {
 	triples := getTuples(fmt.Sprintf("p:%s s:", strconv.Quote(fmt.Sprintf("%s.-RefId", object))), context)
-	//log.Println("%+v\n", triples)
 	objIDs := make([]string, 0)
 	for _, t := range triples {
-		//objIDs = append(objIDs, t.S)
 		objIDs = append(objIDs, t.Subject)
 	}
 	return objIDs, nil
 }
 
+// Retrieve the XML object corresponding to the tuples stored under the given RefId. Synchronous.
+// If stripempty, strip empty tags from the XML object.
 func DbTriples2XML(refid string, context string, stripempty bool) ([]byte, error) {
 	triples := getTuples(fmt.Sprintf("s:%s p:", strconv.Quote(fmt.Sprintf("%v", refid))), context)
-	//log.Printf("%+v\n", triples)
-
 	json := ""
 	var err error
 	for _, t := range triples {
-		//log.Printf("%s %s %s\n", t.Subject, mxj2sjsonPath(t.Predicate), t.Object)
+		// Build up the XML object through sjson
 		json, err = sjson.Set(json, mxj2sjsonPath(t.Predicate), t.Object)
 		if err != nil {
 			return nil, err
 		}
 	}
-	//log.Printf("%+v\n", json)
 	mm, err := mxj.NewMapJson([]byte(json))
 	if err != nil {
 		return nil, err
 	}
-	// log.Printf("%+v\n", mm)
 	return Map2SIFXML(mm, stripempty)
 }
 
-// Brute force stripping of empty tags and attributes from XML string.
-// Works for SIF because it does not have mixed tags and text.
 var emptytag1 = regexp.MustCompile(`(?s:\s*<[^>/]+></[^>]+>\s*)`)
 var emptytag2 = regexp.MustCompile(`(?s:\s*<[^>/]+/>\s*)`)
 var emptytag3 = regexp.MustCompile(`(?s:\s+[^>='" ]+=(''|""))`)
 
+// Brute force stripping of empty tags and attributes from XML string.
+// Works for SIF because it does not have mixed tags and text.
 // Optional to call; will have performance hit
 func stripEmptyTags(s []byte) []byte {
 	s = emptytag1.ReplaceAll(s, []byte(""))
@@ -599,7 +667,8 @@ var remove_empty_structs1 = regexp.MustCompile(`\{"[^"]+":\{\},`)
 var attribute_rename = regexp.MustCompile(`([^\\])"-([^"\\]+)":`)
 var value_rename = regexp.MustCompile(`([^\\])"Value":`)
 
-// convert to Goessner notation
+// Convert an XML object to JSON using Goessner notation.
+// Ignores namespaces, and gets rid of xs:nil
 func XMLtoJSON(x []byte) ([]byte, error) {
 	m, err := mxj.NewMapXml(x)
 	json, err := m.Json(true)

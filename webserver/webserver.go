@@ -21,7 +21,10 @@ import (
 	"time"
 )
 
+// root element in an XML string
 var xmlobject = regexp.MustCompile(`(?s:^\s*<([^> ]+))`)
+
+const DROPBOX = "./in"
 
 // write actions in REST
 const (
@@ -32,7 +35,7 @@ const (
 )
 
 // Watch a dropbox directory for new files, and post their contents to REST
-func directoryWatcher() {
+func directoryWatcher(dropbox string) {
 	var err error
 	w := watcher.New()
 	w.SetMaxEvents(1)
@@ -50,7 +53,7 @@ func directoryWatcher() {
 		}
 	}()
 
-	if err = w.AddRecursive("./in"); err != nil {
+	if err = w.AddRecursive(dropbox); err != nil {
 		log.Fatalln(err)
 	}
 	go func() {
@@ -60,7 +63,7 @@ func directoryWatcher() {
 	}()
 }
 
-// post the contents of an XML file to REST
+// Post the contents of an XML file to REST
 func SendXmlToDataStore(filename string) error {
 	fi, err := os.Lstat(filename)
 	if err != nil {
@@ -107,7 +110,7 @@ func SIFGetToDataStore(url string) error {
 	return nil
 }
 
-// asynchronously post a slice of triples to REST
+// Asynchronously post a slice of triples to REST
 func simultSendTriples(alltriples []*xml2triples.Triple, context string, done chan<- struct{}) {
 	ch := make(chan struct{})
 	tmp := make([]*xml2triples.Triple, len(alltriples))
@@ -117,7 +120,9 @@ func simultSendTriples(alltriples []*xml2triples.Triple, context string, done ch
 	done <- struct{}{} // to sync all triples batches sent
 }
 
-// asynchronously post a channel of triples to REST, in batches of 1000 triples
+const BATCHSIZE = 1000
+
+// Asynchronously post a channel of triples to REST, in batches of BATCHSIZE triples
 func sendTriplesAsync(triplech <-chan *xml2triples.Triple, context string, done chan<- struct{}) {
 	ch := make(chan struct{}) // channel to sync all the triples being sent through REST
 	batchcount := 0
@@ -128,7 +133,7 @@ func sendTriplesAsync(triplech <-chan *xml2triples.Triple, context string, done 
 		i++
 		triplesSent++
 		triples = append(triples, t)
-		if i == 1000 {
+		if i == BATCHSIZE {
 			batchcount++
 			go simultSendTriples(triples, context, ch)
 			triples = make([]*xml2triples.Triple, 0)
@@ -139,7 +144,7 @@ func sendTriplesAsync(triplech <-chan *xml2triples.Triple, context string, done 
 	batchcount++
 	go simultSendTriples(triples, context, ch)
 	for i := 0; i < batchcount; i++ {
-		<-ch
+		<-ch // synchronise all batches
 	}
 	done <- struct{}{}
 }
@@ -152,24 +157,29 @@ var triplesSent int
 // or else the conventional wrapper <sif>
 // If mustUseAdvisory = true, does not ignore any suggested RefIds for objects:
 // the refids in a static file will be cross-referenced.
+// Verb is the REST operation to be done with the file: POST, PUT, PATCH, DELETE
+// Returns the slice of SIF response messages for each object in the payload,
+// error for failing to send any triples (resource collision), and generic error
 func sendReaderToDataStore(r io.Reader, mustUseAdvisory bool, verb int) ([]xml2triples.SifResponse, error, error) {
 	// https://stackoverflow.com/a/40526247
 	var buffer bytes.Buffer
-	ch := make(chan struct{})
-	refidch := make(chan xml2triples.SifResponse)
-	triplech := make(chan *xml2triples.Triple) // triples gathered from XML, to be posted to REST
+	ch := make(chan struct{})                     // channel of batches of tuples being sent
+	refidch := make(chan xml2triples.SifResponse) // SIF response for each object sent
+	triplech := make(chan *xml2triples.Triple)    // triples gathered from XML, to be posted to REST
 	batchcount := 0
-	done := make(chan struct{})
-	ret_done := make(chan struct{})
+	done := make(chan struct{})     // sent all SIF objects pending
+	ret_done := make(chan struct{}) // received all SIF responses pending
 	var sendtripleerror error
 	sendtripleerror = nil
 	var genericerror error
 	genericerror = nil
-	ret := make([]xml2triples.SifResponse, 0)
+	ret := make([]xml2triples.SifResponse, 0) // SIF response for each object sent
 	triplesSent = 0
 	objs := 0
 
-	go sendTriplesAsync(triplech, "SIF", done) // send out triples gathered in main goroutine to REST, in batches
+	// send out triples gathered in main goroutine to REST, in batches
+	go sendTriplesAsync(triplech, "SIF", done)
+	// read SIF response for each object sent
 	go func() {
 		for e := range refidch {
 			ret = append(ret, e)
@@ -197,11 +207,11 @@ func sendReaderToDataStore(r io.Reader, mustUseAdvisory bool, verb int) ([]xml2t
 		}
 		switch se := el.(type) {
 		case xml.StartElement:
+			// skip multiple-object container tags, such as StudentPersonals
 			if requestMany(se.Name.Local) {
 				continue
 			}
 			objs++
-
 			err := decoder.Skip()
 			if err != nil {
 				log.Println(err)
@@ -236,7 +246,6 @@ func sendReaderToDataStore(r io.Reader, mustUseAdvisory bool, verb int) ([]xml2t
 			default:
 				go xml2triples.StoreXMLasDBtriplesAsync(b, mustUseAdvisory, "SIF", triplech, refidch, ch)
 			}
-
 			// And now the buffer's up to date.
 			bufferOffset = tokenStartOffset
 		}
@@ -257,18 +266,17 @@ func sendReaderToDataStore(r io.Reader, mustUseAdvisory bool, verb int) ([]xml2t
 		*/
 	}
 	for i := 0; i < batchcount; i++ {
-		<-ch
+		<-ch // sync all tuples batches sent
 	}
 	close(triplech)
 	close(refidch)
-
 	<-ret_done
 	<-done
 	log.Printf("sent %d triples in %d objects\n", triplesSent, objs)
 	return ret, sendtripleerror, genericerror
 }
 
-// is this update request a PUT or a PATCH?
+// Is this update request a PUT or a PATCH?
 func full_object_replace(c echo.Context) bool {
 	h := c.Request().Header
 	full := false
@@ -283,7 +291,7 @@ func full_object_replace(c echo.Context) bool {
 	return full
 }
 
-// should the response be in JSON?
+// Should the response be in JSON?
 func headerJSON(c echo.Context) bool {
 	h := c.Request().Header
 	if accept, ok := h["Accept"]; ok {
@@ -296,28 +304,29 @@ func headerJSON(c echo.Context) bool {
 	return false
 }
 
-// is the mustUseAdvisory field on in the request?
+// Is the mustUseAdvisory field on in the request?
 func mustUseAdvisory(c echo.Context) bool {
 	h := c.Request().Header
 	_, ok := h["Mustuseadvisory"]
 	return ok
 }
 
-// is the methodOverride field in the request set to DELETE?
+// Is the methodOverride field in the request set to DELETE?
 func deleteMany(c echo.Context) bool {
 	h := c.Request().Header
-	v, ok := h["methodOverride"]
+	v, ok := h["Methodoverride"]
 	return ok && len(v) > 0 && v[0] == "DELETE"
 }
 
-// query REST for the XML corresponding to a set of RefIDs. If content has been requested in JSON,
-// convert XML to Goessner JSON. Return XML or JSON, and sets HTTP response content type
-func ids2XMLJSON(ids []string, objectname string, c echo.Context, buffer bytes.Buffer) (bytes.Buffer, error) {
+// Query REST for the XML corresponding to a set of RefIDs. If content has been requested in JSON,
+// convert XML to Goessner JSON. Return XML or JSON, and sets HTTP response content type.
+// If XML, wrap the objects with the tag given in wrapper.
+func ids2XMLJSON(ids []string, wrapper string, c echo.Context, buffer bytes.Buffer) (bytes.Buffer, error) {
 	json := headerJSON(c)
 	if json {
 		buffer.Write([]byte("["))
 	} else { // xml
-		buffer.Write([]byte("<" + objectname + ">\n"))
+		buffer.Write([]byte("<" + wrapper + ">\n"))
 	}
 	for i, refid := range ids {
 		obj, err := xml2triples.DbTriples2XML(refid, "SIF", true)
@@ -342,7 +351,7 @@ func ids2XMLJSON(ids []string, objectname string, c echo.Context, buffer bytes.B
 		buffer.Write([]byte("]"))
 		c.Response().Header().Set("Content-Type", "application/json")
 	} else {
-		buffer.Write([]byte("</" + objectname + ">\n"))
+		buffer.Write([]byte("</" + wrapper + ">\n"))
 		c.Response().Header().Set("Content-Type", "application/xml")
 	}
 	return buffer, nil
@@ -354,7 +363,7 @@ func requestMany(objectname string) bool {
 	return strings.HasSuffix(objectname, "s") || objectname == "sif"
 }
 
-// formulate SIF Create Response to POST MANY
+// formulate SIF Create Response to POST MANY, based on the responses received
 func createResponse(responses []xml2triples.SifResponse) string {
 	var bld strings.Builder
 	bld.WriteString("<createResponse>\n  <creates>\n")
@@ -371,7 +380,7 @@ func createResponse(responses []xml2triples.SifResponse) string {
 	return bld.String()
 }
 
-// formulate SIF Update Response to PUT MANY
+// formulate SIF Update Response to PUT MANY, based on the responses received
 func updateResponse(responses []xml2triples.SifResponse) string {
 	var bld strings.Builder
 	bld.WriteString("<updateResponse>\n  <updates>\n")
@@ -379,7 +388,7 @@ func updateResponse(responses []xml2triples.SifResponse) string {
 		if r.Error == nil {
 			bld.WriteString(fmt.Sprintf("    <update id=\"%s\" statusCode = \"200\"/>\n", r.RefId))
 		} else {
-			bld.WriteString(fmt.Sprintf("    <update statusCode = \"404\">\n"))
+			bld.WriteString(fmt.Sprintf("    <update id=\"%s\" statusCode = \"404\">\n", r.RefId))
 			bld.WriteString(fmt.Sprintf("      <error id=\"%s\">\n", strings.ToUpper(uuid.NewV4().String())))
 			bld.WriteString(fmt.Sprintf("        <code>404</code>\n        <scope>Not Found</scope>\n        <message>Object with that RefId not found</message>\n      </error>\n    </update>\n"))
 		}
@@ -388,7 +397,7 @@ func updateResponse(responses []xml2triples.SifResponse) string {
 	return bld.String()
 }
 
-// formulate SIF Update Response to DELETE MANY
+// formulate SIF Update Response to DELETE MANY, based on the responses received
 func deleteResponse(responses []xml2triples.SifResponse) string {
 	var bld strings.Builder
 	bld.WriteString("<deleteResponse>\n  <deletes>\n")
@@ -396,7 +405,7 @@ func deleteResponse(responses []xml2triples.SifResponse) string {
 		if r.Error == nil {
 			bld.WriteString(fmt.Sprintf("    <delete id=\"%s\" statusCode = \"200\"/>\n", r.RefId))
 		} else {
-			bld.WriteString(fmt.Sprintf("    <delete statusCode = \"404\">\n"))
+			bld.WriteString(fmt.Sprintf("    <delete id=\"%s\" statusCode = \"404\">\n", r.RefId))
 			bld.WriteString(fmt.Sprintf("      <error id=\"%s\">\n", strings.ToUpper(uuid.NewV4().String())))
 			bld.WriteString(fmt.Sprintf("        <code>404</code>\n        <scope>Not Found</scope>\n        <message>Object with that RefId not found</message>\n      </error>\n    </delete>\n"))
 		}
@@ -405,6 +414,9 @@ func deleteResponse(responses []xml2triples.SifResponse) string {
 	return bld.String()
 }
 
+// time to wait for tuple request to be processed, for single synchronous object request
+const STOREWAIT = 200 * time.Millisecond
+
 func Webserver() {
 	var err error
 	e := echo.New()
@@ -412,7 +424,7 @@ func Webserver() {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 	uuid.Init()
-	directoryWatcher()
+	directoryWatcher(DROPBOX)
 
 	// NSW Digital Classroom adhoc queries
 	e.GET("/sifxml/kla2student", func(c echo.Context) error {
@@ -430,6 +442,7 @@ func Webserver() {
 		return nil
 	})
 
+	// NSW Digital Classroom adhoc queries
 	e.GET("/sifxml/kla2staff", func(c echo.Context) error {
 		var buffer bytes.Buffer
 		kla := c.QueryParam("kla")
@@ -445,6 +458,7 @@ func Webserver() {
 		return nil
 	})
 
+	// NSW Digital Classroom adhoc queries
 	e.GET("/sifxml/kla2teachinggroup", func(c echo.Context) error {
 		var buffer bytes.Buffer
 		kla := c.QueryParam("kla")
@@ -460,6 +474,7 @@ func Webserver() {
 		return nil
 	})
 
+	// NSW Digital Classroom adhoc queries
 	e.GET("/sifxml/kla2timetablesubject", func(c echo.Context) error {
 		var buffer bytes.Buffer
 		kla := c.QueryParam("kla")
@@ -484,7 +499,8 @@ func Webserver() {
 				return err
 			}
 			objects := c.Param("objects")
-			// https://github.com/labstack/echo/issues/1139 : have to name "refid", but it's actually object name
+			// https://github.com/labstack/echo/issues/1139 : have to name this parameter "refid", to match
+			// other path instances, but it's actually the object name
 			object := c.Param("refid")
 			if object != strings.TrimSuffix(objects, "s") {
 				err = errors.New("POST ONE request path is malformed")
@@ -513,7 +529,8 @@ func Webserver() {
 			go xml2triples.SendTriplesAsync(triples, "SIF", ch)
 			<-ch
 			// allow time for triples to be stored
-			time.Sleep(200 * time.Millisecond)
+			//time.Sleep(200 * time.Millisecond)
+			time.Sleep(STOREWAIT)
 			x, err := xml2triples.DbTriples2XML(guid, "SIF", true)
 			if err != nil {
 				c.String(http.StatusUnprocessableEntity, err.Error())
@@ -549,7 +566,7 @@ func Webserver() {
 	// PUT ONE
 	e.PUT("/sifxml/:objects/:refid", func(c echo.Context) error {
 		refid := c.Param("refid")
-		object := c.Param("objects")
+		object := strings.TrimSuffix(c.Param("objects"), "s")
 		var bodyBytes []byte
 		if c.Request().Body != nil {
 			if bodyBytes, err = ioutil.ReadAll(c.Request().Body); err != nil {
@@ -580,6 +597,7 @@ func Webserver() {
 					return err
 				}
 			}
+			// allow time for triples to be stored
 			time.Sleep(200 * time.Millisecond)
 			x, err := xml2triples.DbTriples2XML(refid, "SIF", true)
 			if err != nil {
@@ -609,6 +627,9 @@ func Webserver() {
 				verb = PUT
 			} else if deleteMany(c) {
 				verb = DELETE
+				log.Println("DELETE")
+			} else {
+				log.Println("PATCH")
 			}
 			ret, _, genericerr := sendReaderToDataStore(bytes.NewReader(bodyBytes), true, verb)
 			if genericerr != nil {
@@ -650,7 +671,7 @@ func Webserver() {
 		return nil
 	})
 
-	// GET MANY
+	// GET MANY, as JSON or XML
 	e.GET("/sifxml/:objects", func(c echo.Context) error {
 		object := strings.TrimSuffix(c.Param("objects"), "s")
 		objIDs, err := xml2triples.GetAllXMLByObject(object, "SIF")
