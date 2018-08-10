@@ -191,7 +191,6 @@ func existsRefid(refid string, context string, ch chan<- bool) {
 	tuples := getTuples(fmt.Sprintf("s:%s o:", strconv.Quote(refid)), context)
 	<-limitch
 	ret := false
-	log.Printf("%+v\n", tuples)
 	for _, t := range tuples {
 		if t.Object != "" {
 			ret = true
