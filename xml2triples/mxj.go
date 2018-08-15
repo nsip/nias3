@@ -102,7 +102,6 @@ type Triple struct {
 	Context   string
 }
 
-// TODO restrict query to a context
 // Send a slice of triples synchronously to Nias3Engine
 // Always add limitch <- struct{}{} before calling
 func send_triples(triples []*Triple, context string) {
@@ -116,7 +115,7 @@ func send_triples(triples []*Triple, context string) {
 	}
 	//log.Println(string(json))
 	<-limitch
-	req, err := http.NewRequest("POST", baseUrl+"/tuples", bytes.NewBuffer(json))
+	req, err := http.NewRequest("POST", baseUrl+"/tuples/"+context, bytes.NewBuffer(json))
 	if err != nil {
 		panic(err)
 	}
@@ -136,7 +135,6 @@ func SendTriplesAsync(triples []*Triple, context string, done chan<- struct{}) {
 }
 
 // Check if S(P(O)) key prefix is on Nias3Engine Hexastore. Adds context prefix to key before checking. Synchronous.
-// TODO restrict query to a context
 func hasKey(keyprefix string, context string) bool {
 	keyprefix1 := fmt.Sprintf("c:%s %s", strconv.Quote(context), keyprefix)
 	req, err := http.NewRequest("GET", baseUrl+"/HasKey/"+url.PathEscape(keyprefix1), nil)
@@ -152,7 +150,6 @@ func hasKey(keyprefix string, context string) bool {
 
 // Check if S(P(O)) key prefix is on Nias3Engine Hexastore. Adds context prefix to key before checking. Asynchronous.
 // Always add limitch <- struct{}{} before calling
-// TODO restrict query to a context
 func hasKeyAsync(keyprefix string, context string, ch chan<- bool) {
 	keyprefix1 := fmt.Sprintf("c:%s %s", strconv.Quote(context), keyprefix)
 	req, err := http.NewRequest("GET", baseUrl+"/HasKey/"+url.PathEscape(keyprefix1), nil)
@@ -169,10 +166,25 @@ func hasKeyAsync(keyprefix string, context string, ch chan<- bool) {
 
 // Retrieve tuples from Hexastore matching a key prefix (involving a subset of s: o: p:; the c: prefix
 // will be added here). Synchronous.
-// TODO restrict query to a context
 func getTuples(keyprefix string, context string) []*Triple {
 	keyprefix1 := fmt.Sprintf("c:%s %s", strconv.Quote(context), keyprefix)
 	req, err := http.NewRequest("GET", baseUrl+"/tuple/"+url.PathEscape(keyprefix1), nil)
+	if err != nil {
+		panic(err)
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	ret := make([]*Triple, 0)
+	json.NewDecoder(resp.Body).Decode(&ret)
+	return ret
+}
+
+// Retrieve tuples from Influx store matching a subject
+func getTuplesInflux(subject string, context string) []*Triple {
+	req, err := http.NewRequest("GET", baseUrl+"/influxtuple/"+url.PathEscape(subject), nil)
 	if err != nil {
 		panic(err)
 	}
@@ -619,7 +631,8 @@ func GetAllXMLByObject(object string, context string) ([]string, error) {
 // Retrieve the XML object corresponding to the tuples stored under the given RefId. Synchronous.
 // If stripempty, strip empty tags from the XML object.
 func DbTriples2XML(refid string, context string, stripempty bool) ([]byte, error) {
-	triples := getTuples(fmt.Sprintf("s:%s p:", strconv.Quote(fmt.Sprintf("%v", refid))), context)
+	//triples := getTuples(fmt.Sprintf("s:%s p:", strconv.Quote(fmt.Sprintf("%v", refid))), context)
+	triples := getTuplesInflux(refid, context)
 	json := ""
 	var err error
 	for _, t := range triples {
