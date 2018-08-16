@@ -2,6 +2,7 @@ package webserver
 
 import (
 	"bytes"
+	"encoding/json"
 	"encoding/xml"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"github.com/labstack/echo/middleware"
 	"github.com/nsip/nias3/xml2triples"
 	"github.com/radovskyb/watcher"
+	"github.com/tidwall/gjson"
 	"github.com/twinj/uuid"
 	"io"
 	"io/ioutil"
@@ -17,7 +19,6 @@ import (
 	"os"
 	"regexp"
 	"strings"
-	//"sync"
 	"time"
 )
 
@@ -81,6 +82,35 @@ func SendXmlToDataStore(filename string) error {
 		return err
 	}
 	ret, err1, err := sendReaderToDataStore(file, true, POST)
+	if err != nil {
+		return err
+	}
+	log.Println(createResponse(ret))
+	if err1 != nil {
+		return err1
+	}
+	log.Printf("Read in file %s into filestore\n", filename)
+	return nil
+}
+
+// Post the contents of a JSON file to REST
+func SendJsonToDataStore(filename string, context string) error {
+	fi, err := os.Lstat(filename)
+	if err != nil {
+		return err
+	}
+	if fi.Mode().IsDir() {
+		return fmt.Errorf("%s is a directory", filename)
+	}
+	if !strings.HasSuffix(filename, ".json") {
+		return fmt.Errorf("%s is not an JSON file", filename)
+	}
+	file, err := ioutil.ReadFile(filename)
+	if err != nil {
+		log.Printf("Cannot read in file %s\n", filename)
+		return err
+	}
+	ret, err1, err := sendReaderToDataStoreJSON(file, context)
 	if err != nil {
 		return err
 	}
@@ -272,7 +302,68 @@ func sendReaderToDataStore(r io.Reader, mustUseAdvisory bool, verb int) ([]xml2t
 	close(refidch)
 	<-ret_done
 	<-done
-	log.Printf("sent %d triples in %d objects\n", triplesSent, objs)
+	log.Printf("sent %d triples in %d SIF XML objects\n", triplesSent, objs)
+	return ret, sendtripleerror, genericerror
+}
+
+// Send a file of JSON to REST
+// The file is assumed to be a well-formed JSON array.
+// Currently does only POST.
+func sendReaderToDataStoreJSON(bodyBytes []byte, context string) ([]xml2triples.SifResponse, error, error) {
+	ch := make(chan struct{})                     // channel of batches of tuples being sent
+	refidch := make(chan xml2triples.SifResponse) // SIF response for each object sent
+	triplech := make(chan *xml2triples.Triple)    // triples gathered from XML, to be posted to REST
+	batchcount := 0
+	done := make(chan struct{})     // sent all SIF objects pending
+	ret_done := make(chan struct{}) // received all SIF responses pending
+	var sendtripleerror error
+	sendtripleerror = nil
+	var genericerror error
+	genericerror = nil
+	ret := make([]xml2triples.SifResponse, 0) // SIF response for each object sent
+	triplesSent = 0
+	objs := 0
+
+	m, ok := gjson.Parse(string(bodyBytes)).Value().([]interface{})
+	if !ok {
+		return ret, errors.New("malformed JSON payload"), nil
+	}
+
+	// send out triples gathered in main goroutine to REST, in batches
+	go sendTriplesAsync(triplech, context, done)
+	// read SIF response for each object sent
+	go func() {
+		for e := range refidch {
+			ret = append(ret, e)
+			if e.Error != nil {
+				log.Println(sendtripleerror)
+				sendtripleerror = e.Error
+			}
+		}
+		ret_done <- struct{}{}
+	}()
+
+	for _, elem := range m {
+		objs++
+		jsonBytes, err := json.Marshal(elem)
+		//log.Println(string(jsonBytes))
+		if err != nil {
+			log.Println(err)
+			genericerror = err
+			break
+		} else {
+			batchcount++
+			go xml2triples.StoreJSONasDBtriplesAsync(jsonBytes, context, triplech, refidch, ch)
+		}
+	}
+	for i := 0; i < batchcount; i++ {
+		<-ch // sync all tuples batches sent
+	}
+	close(triplech)
+	close(refidch)
+	<-ret_done
+	<-done
+	log.Printf("sent %d triples in %d JSON objects\n", triplesSent, objs)
 	return ret, sendtripleerror, genericerror
 }
 
@@ -559,6 +650,25 @@ func Webserver() {
 			}
 			c.Response().Header().Set("Content-Type", "application/xml")
 			c.String(http.StatusOK, createResponse(ret))
+		}
+		return nil
+	})
+
+	// POST MANY, array of xAPI JSON objects. Expect input to be JSON array
+	e.POST("/xapi", func(c echo.Context) error {
+		var bodyBytes []byte
+		if c.Request().Body != nil {
+			if bodyBytes, err = ioutil.ReadAll(c.Request().Body); err != nil {
+				c.String(http.StatusBadRequest, err.Error())
+				return err
+			}
+			_, _, genericerr := sendReaderToDataStoreJSON(bodyBytes, "xAPI")
+			if genericerr != nil {
+				c.String(http.StatusBadRequest, genericerr.Error())
+				return err
+			}
+			c.Response().Header().Set("Content-Type", "application/xml")
+			c.String(http.StatusOK, "OK")
 		}
 		return nil
 	})

@@ -554,7 +554,7 @@ type SifResponse struct {
 	Error      error
 }
 
-// Store the object on the Hexastore. If mustUseAdvisory is on, use the supplied RefId if available,
+// Store an XML object on the Hexastore. If mustUseAdvisory is on, use the supplied RefId if available,
 // else raise error; if off, generate new RefId. Asynchronous.
 // Outputs SIF responses for each refid to errch
 // Outputs a list of tuples to be sent to Hexastore to outch
@@ -573,10 +573,10 @@ func StoreXMLasDBtriplesAsync(s []byte, mustUseAdvisory bool, context string, ou
 		advisoryId = ""
 		mustUseAdvisory = false
 	} else {
-		limitch <- struct{}{}
 		advisoryId = advisoryIdRaw.(string)
 		if mustUseAdvisory {
 			refid = advisoryId
+			limitch <- struct{}{}
 			go existsRefid(refid, context, haskeych)
 		} else {
 			refid = strings.ToUpper(uuid.NewV4().String())
@@ -601,6 +601,60 @@ func StoreXMLasDBtriplesAsync(s []byte, mustUseAdvisory bool, context string, ou
 	}
 	if !refIdClash {
 		for _, t := range triples {
+			outch <- t
+		}
+		errch <- SifResponse{AdvisoryId: advisoryId, RefId: refid, Error: nil}
+	}
+	ch <- struct{}{}
+}
+
+// Store a JSON object on the Hexastore. Asynchronous.
+// Outputs SIF responses for each refid to errch
+// Outputs a list of tuples to be sent to Hexastore to outch
+// JSON object is assumed to have an "id" top-level value, which is the subject for the tuples of that object.
+// If not present, one will be created. If it is present, and it has already been used as an object in that
+// context, the request will be denied.
+func StoreJSONasDBtriplesAsync(s []byte, context string, outch chan<- *Triple, errch chan<- SifResponse, ch chan<- struct{}) {
+	haskeych := make(chan bool)
+	m, err := mxj.NewMapJson(s)
+	if err != nil {
+		log.Println(err)
+		errch <- SifResponse{RefId: "", Error: err}
+		ch <- struct{}{}
+		return
+	}
+	advisoryIdRaw, err := m.ValueForPath("id")
+	var refid, advisoryId string
+	checkRefId := false
+	if err != nil {
+		advisoryId = ""
+		refid = strings.ToUpper(uuid.NewV4().String())
+	} else {
+		advisoryId = advisoryIdRaw.(string)
+		refid = strings.ToUpper(advisoryId)
+		checkRefId = true
+		limitch <- struct{}{}
+		go existsRefid(refid, context, haskeych)
+	}
+	m.SetValueForPath(refid, "id")
+	triples := make([]*Triple, 0)
+	for _, n := range m.LeafNodes() {
+		triples = append(triples, &Triple{
+			Subject:   fmt.Sprintf("%v", refid),
+			Predicate: n.Path,
+			Object:    fmt.Sprintf("%v", n.Value),
+			Context:   context})
+	}
+	refIdClash := false
+	if checkRefId {
+		refIdClash = <-haskeych
+	}
+	if refIdClash {
+		errch <- SifResponse{AdvisoryId: advisoryId, RefId: "",
+			Error: fmt.Errorf("ID %v already in use\n", refid)}
+	} else {
+		for _, t := range triples {
+			//log.Printf("%#v\n", t)
 			outch <- t
 		}
 		errch <- SifResponse{AdvisoryId: advisoryId, RefId: refid, Error: nil}

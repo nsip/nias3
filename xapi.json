@@ -125,12 +125,13 @@
               "en-US": "12000"
             }
           }
-      },
-      "objectType": "Activity"
+        ],
+        "objectType": "Activity"
+      }
     }
   },
   {
-    "id": "6f7fd4eb-e4d6-4bd8-bc98-faae308157bb",
+    "id": "6f7fd4eb-e4d6-4bd8-bc98-faae308157bc",
     "actor": {
       "name": "cbfb2a63-7ad7-44d6-8",
       "mbox": "mailto:cbfb2a63-7ad7-44d6-8@abcya.com",
@@ -201,32 +202,32 @@
         "interactionType": "choice",
         "correctResponsesPattern": [
           "1000"
-        ],
-        "choices": [
-          {
-            "id": "http://www.abcya.com/base_ten_bingo.htm",
-            "description": {
-              "en-US": "5000"
-            }
-          },
-          {
-            "id": "http://www.abcya.com/base_ten_bingo.htm",
-            "description": {
-              "en-US": "3000"
-            }
-          },
-          {
-            "id": "http://www.abcya.com/base_ten_bingo.htm",
-            "description": {
-              "en-US": "1000"
-            }
-          },
-          {
-            "id": "http://www.abcya.com/base_ten_bingo.htm",
-            "description": {
-              "en-US": "2000"
-            }
-          },
+          ],
+          "choices": [
+            {
+              "id": "http://www.abcya.com/base_ten_bingo.htm",
+              "description": {
+                "en-US": "5000"
+              }
+            },
+            {
+              "id": "http://www.abcya.com/base_ten_bingo.htm",
+              "description": {
+                "en-US": "3000"
+              }
+            },
+            {
+              "id": "http://www.abcya.com/base_ten_bingo.htm",
+              "description": {
+                "en-US": "1000"
+              }
+            },
+            {
+              "id": "http://www.abcya.com/base_ten_bingo.htm",
+              "description": {
+                "en-US": "2000"
+              }
+            },
             {
               "id": "http://www.abcya.com/base_ten_bingo.htm",
               "description": {
@@ -239,8 +240,9 @@
                 "en-US": "12000"
               }
             }
-      },
-      "objectType": "Activity"
+          ],
+          "objectType": "Activity"
+      }
     }
   }
-        ]
+]
