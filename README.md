@@ -18,7 +18,7 @@ NIAS uses the following core concepts:
 NIAS has gone through the following implementation stages:
 * [NIAS](https://github.com/nsip/nias) (Oct 2015), implemented in Ruby with Apache Kafka data streaming, Redis as graph database, LMDS as data store. Initial proof of concept; stream chaining, filtering, format conversion, multiple standards in graph. Simple Analytics front-end.
 * [NIAS2](https://github.com/nsip/nias2) (Jul 2016), implemented in Go with [NATS Streaming](https://github.com/nats-io/go-nats-streaming), [Ledis](https://github.com/siddontang/ledisdb) as graph database and data store. Optimised for performance; intended for desktop deployment. Specific to NAPLAN use cases.
-* [NIAS3](https://github.com/nsip/nias3), [NIAS3-Engine](https://github.com/nsip/nias3-engine) (Mar 2018), implemented in Go with [NATS Streaming](https://github.com/nats-io/go-nats-streaming), [Bolt](https://github.com/boltdb/bolt) as Hexastore graph database. Move to triples as storage unit, peer-to-peer synchronisation of data, digital signing of data, encryption in transit, multiple contexts of data.
+* [NIAS3](https://github.com/nsip/nias3), [NIAS3-Engine](https://github.com/nsip/nias3-engine) (Mar 2018), implemented in Go with [NATS Streaming](https://github.com/nats-io/go-nats-streaming), [Bolt](https://github.com/boltdb/bolt) as Hexastore graph database, [Influx](https://github.com/influxdata/influxdb) as Read model. Move to triples as storage unit, peer-to-peer synchronisation of data, digital signing of data, encryption in transit, multiple contexts of data.
 
 ## Installation
 
@@ -81,6 +81,10 @@ There are four ad hoc queries included for the NSW Digital Classroom project:
 * `GET http://localhost:1492/sifxml/kla2timetablesubject?kla=:keylearningarea&yrlvl=:yearlevel"`: return all timetable subjects about the given Key Learning Area in the given year level, as a join of SchoolCourseInfo and TimeTableSubject. Presupposes that the learning area is encoded as SchoolCourseInfo/SubjectArea/Code.
 
 Sample data for this query is included as `nswdig.xml`. Functionalty illustrated in `test_nsw.sh`.
+
+There is also a SIF/xAPI crosswalk query in place:
+
+* `GET http://sif2xapi/:refid`: Retrieve all xAPI statements associated with the student or staff identified with the RefID `:refid` under SIF. The join between xAPI and SIF is that one of the emails given for the student or staff in SIF appears as the `actor.mbox` attribute for the xAPI statement (prefixed with `mailto:`, as required under xAPI).
 
 ### SIF XML Client
 

@@ -134,6 +134,22 @@ func SendTriplesAsync(triples []*Triple, context string, done chan<- struct{}) {
 	done <- struct{}{}
 }
 
+// Retrieve xAPI tuples aligned to SIF refid. Synchronous.
+func Sif2Xapi(refid string) []*Triple {
+	req, err := http.NewRequest("GET", baseUrl+"/sif2xapi/"+url.PathEscape(refid), nil)
+	if err != nil {
+		panic(err)
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	ret := make([]*Triple, 0)
+	json.NewDecoder(resp.Body).Decode(&ret)
+	return ret
+}
+
 // Check if S(P(O)) key prefix is on Nias3Engine Hexastore. Adds context prefix to key before checking. Synchronous.
 func hasKey(keyprefix string, context string) bool {
 	keyprefix1 := fmt.Sprintf("c:%s %s", strconv.Quote(context), keyprefix)
@@ -766,4 +782,29 @@ func XMLtoJSON(x []byte) ([]byte, error) {
 	json = attribute_rename.ReplaceAll(json, []byte("$1\"@$2\":"))
 	json = value_rename.ReplaceAll(json, []byte("$1\"#text\":"))
 	return json, nil
+}
+
+// get tuples, and organise them into JSON objects by subject
+func Tuples2JSON(triples []*Triple) (string, error) {
+	json := make(map[string]string)
+	var err error
+	for _, t := range triples {
+		// Build up the JSON object through sjson
+		if _, ok := json[t.Subject]; !ok {
+			json[t.Subject] = ""
+		}
+		json[t.Subject], err = sjson.Set(json[t.Subject], mxj2sjsonPath(t.Predicate), t.Object)
+		if err != nil {
+			return "", err
+		}
+	}
+	ret := "["
+	for i, j := range json {
+		ret += j
+		if i < len(json)-1 {
+			ret += ",\n"
+		}
+	}
+	ret += "]"
+	return ret, nil
 }

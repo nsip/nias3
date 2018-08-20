@@ -48,3 +48,7 @@ rm -f 'in/purchaseorder.xml'
 echo '\ncp purchaseorder.xml in\n\n'
 cp purchaseorder.xml 'in'
 
+
+echo '\ncurl -i -X GET http://localhost:1492/sif2xapi/D3E34F41-9D75-101A-8C3D-00AA001A1652\n\n'
+curl -i -X GET http://localhost:1492/sif2xapi/D3E34F41-9D75-101A-8C3D-00AA001A1652
+

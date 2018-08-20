@@ -840,6 +840,20 @@ func Webserver() {
 		return err
 	})
 
+	// GET MANY xAPI aligned to SIF RefId
+	e.GET("/sif2xapi/:objects", func(c echo.Context) error {
+		refid := c.Param("objects")
+		tuples := xml2triples.Sif2Xapi(refid)
+		ret, err := xml2triples.Tuples2JSON(tuples)
+		if err != nil {
+			c.String(http.StatusBadRequest, err.Error())
+			return err
+		}
+		c.Response().Header().Set("Content-Type", "application/json")
+		c.String(http.StatusOK, ret)
+		return nil
+	})
+
 	// DELETE ONE
 	e.DELETE("/sifxml/:objects/:refid", func(c echo.Context) error {
 		// we don't check the type of object we're deleting
