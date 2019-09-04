@@ -1,8 +1,7 @@
 # nias3
 
-*** DEPRECATED (RETIRED) ***
-
-*This repository is obsolete and retired (archived). This is an unmantained repository. In particular, note that it is not being updated with security patches, including those for dependent libraries.*
+***CODE BASE DEPRECATED***
+*This repository still contains valuable information in the wiki. However, its code base is not maintained, inclduing security patches.*
 
 NIAS as peer-to-peer triple store
 
