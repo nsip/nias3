@@ -1,6 +1,7 @@
 # nias3
 
 ***CODE BASE DEPRECATED***
+
 *This repository still contains valuable information in the wiki. However, its code base is not maintained, inclduing security patches.*
 
 NIAS as peer-to-peer triple store
