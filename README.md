@@ -4,6 +4,9 @@
 
 *This repository still contains valuable information in the wiki. However, its code base is not maintained, inclduing security patches.*
 
+For the current release of nias3 (n3) please visit http://github.com/nsip/n3
+
+
 NIAS as peer-to-peer triple store
 
 
